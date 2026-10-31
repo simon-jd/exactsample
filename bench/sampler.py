@@ -14,11 +14,16 @@ the same torch op. Reported per call:
 
     python bench/sampler.py --impl exactsample --output results/raw/sampler/exactsample.jsonl
     python bench/sampler.py --impl vllm_mrv2 --output results/raw/sampler/vllm.jsonl
-    python bench/sampler.py --impl flashinfer --output results/raw/sampler/flashinfer.jsonl
+    python bench/sampler.py --impl flashinfer:probs --output results/raw/sampler/flashinfer-probs.jsonl
+
+bench/run_matrix.sh repeats every implementation, interleaved, and
+bench/summarize.py reports the median and interquartile range over runs.
 """
 import argparse
 import json
+import re
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -63,6 +68,20 @@ def workload(capture, requests, drafts, params, device):
     return logits, offsets, torch.as_tensor(ids, device=device), gpu_params, rng
 
 
+def kernel_name(name):
+    """Kernel name without return type, namespaces' template arguments or parameters."""
+    name = re.sub(r"^void ", "", name)
+    depth, out = 0, []
+    for ch in name:
+        if ch in "<(":
+            depth += 1
+        elif ch in ">)":
+            depth -= 1
+        elif depth == 0:
+            out.append(ch)
+    return "".join(out).split(" ")[-1]
+
+
 def measure(call, iterations=100, cold_iterations=30):
     import torch
     from torch.profiler import ProfilerActivity, profile
@@ -76,6 +95,11 @@ def measure(call, iterations=100, cold_iterations=30):
         torch.cuda.synchronize()
     kernels = [e for e in prof.events() if e.device_type.name == "CUDA"]
     gpu_us = sum(e.device_time_total for e in kernels) / 20
+    by_name = defaultdict(lambda: [0, 0.0])
+    for e in kernels:
+        entry = by_name[kernel_name(e.name)]
+        entry[0] += 1
+        entry[1] += e.device_time_total
     start, stop = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
     start.record()
     for _ in range(iterations):
@@ -93,13 +117,16 @@ def measure(call, iterations=100, cold_iterations=30):
         stop.synchronize()
         cold.append(start.elapsed_time(stop) * 1000)
     return {"gpu_us": gpu_us, "kernels_per_call": len(kernels) / 20, "call_us": call_us,
-            "cold_us": float(np.median(cold))}
+            "cold_us": float(np.median(cold)),
+            "kernels": {n: {"launches": c / 20, "us": t / 20} for n, (c, t) in sorted(by_name.items())}}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--impl", choices=["exactsample", "vllm_mrv2", "flashinfer"], required=True)
+    parser.add_argument("--impl", choices=["exactsample", "vllm_mrv2", "flashinfer:logits", "flashinfer:probs"],
+                        required=True)
     parser.add_argument("--label")
+    parser.add_argument("--run", type=int, default=0, help="repetition index, recorded with each cell")
     parser.add_argument("--exactsample-root", type=Path, default=ROOT, help="exactsample checkout whose python/ package is used")
     parser.add_argument("--capture", type=Path, default=ROOT / "results/raw/logits/qwen3-8b.npz")
     parser.add_argument("--params", nargs="*", default=list(PARAMS))
@@ -115,8 +142,8 @@ def main():
         for name in args.params:
             for requests, drafts in SHAPES:
                 logits, offsets, ids, params, rng = workload(capture, requests, drafts, PARAMS[name], "cuda")
-                record = {"impl": label, "params": name, "requests": requests, "drafts": drafts,
-                          "rows": int(logits.shape[0])}
+                record = {"impl": label, "run": args.run, "params": name, "requests": requests,
+                          "drafts": drafts, "rows": int(logits.shape[0])}
                 if args.impl == "exactsample":
                     from exactsample.cuda import plan, verify
                     workspace = plan(logits.shape[0], requests, ids.shape[1], logits.shape[1])
@@ -137,11 +164,15 @@ def main():
                         record["fp64_fallbacks"] = workspace.fallbacks()
                 else:
                     from native import prepare
-                    call, metadata = prepare(args.impl, logits, offsets, ids[:, :drafts], params, rng)
+                    prepared = prepare(args.impl, logits, offsets, ids[:, :drafts], params, rng)
+                    if prepared is None:
+                        continue
+                    call, metadata = prepared
                     record.update(measure(call))
                     result = call()
                     record["accepted_mean"] = result.accepted_len.float().mean().item()
                     record["version"] = metadata["version"]
+                    record["scope"] = metadata["scope"]
                 print(json.dumps(record), flush=True)
                 out.write(json.dumps(record) + "\n")
                 del logits
