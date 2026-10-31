@@ -79,6 +79,10 @@ the exact value.
 
 `-(1-u)` is formed from the complement of the 32-bit word, so the noise of
 the winning tail (u close to 1) keeps its full 32-bit resolution.
+`scripts/check_gumbel_bound.sh` checks the noise row of this table, and that
+the cheap screen `gumbel_bound` is an upper bound, for every one of the 2^32
+words against an FP64 computation (`results/gumbel-bound.json`): the largest
+error is 0.13 of the bound, and the noise stays in [-3.12999, 22.87386].
 
 **Draws.** Each token contributes an interval `[lo, hi]` around its FP32 score.
 The reduction keeps the token with the largest FP32 score (lowest ID on ties)

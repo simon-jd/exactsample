@@ -84,6 +84,7 @@ their alternatives and costs. In short:
 | Check | Where |
 |---|---|
 | Token-for-token agreement with the FP64 NumPy reference: random batches over parameter combinations (temperature, top-k, top-p, min-p), dtype (fp16/bf16/fp32/fp64), stride, mask, draft kind and mode, in both kept-set representations | `tests/test_cuda.py`, `tests/test_fused.py` |
+| The FP32 Gumbel noise is within its error bound, `2^-19 (1 + |G|)`, for all 2^32 Philox words (worst case 0.13 of the bound), and the pruning screen never undercuts it | `tests/exhaustive/gumbel_bound.cu`, `scripts/check_gumbel_bound.sh`, `results/gumbel-bound.json` |
 | Inputs that defeat FP32 (scores 1e-10 apart, a ratio test 1e-12 from the threshold, min-p and top-p boundaries on exact sums) are settled in FP64 | `tests/test_fused.py` |
 | Batch invariance: alone, permuted, next to other requests, and at different slice counts | `tests/test_fused.py` |
 | Exact probability laws (rational arithmetic, every branch enumerated) for the verification algorithms | `reference/exact.py`, `tests/exact/` |
