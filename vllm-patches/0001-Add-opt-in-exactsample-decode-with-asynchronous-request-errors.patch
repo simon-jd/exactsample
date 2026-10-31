@@ -1,0 +1,179 @@
+From 434ffabcb75bbf98d27b74ee217119d0fadabeba Mon Sep 17 00:00:00 2001
+From: exactsample Local Integration <exactsample-local@example.invalid>
+Date: Tue, 13 Oct 2026 23:14:49 -0700
+Subject: [PATCH] Add opt-in exactsample decode with asynchronous request errors
+
+---
+ vllm/v1/core/sched/scheduler.py     | 14 +++++++++++++
+ vllm/v1/engine/parallel_sampling.py |  7 ++++++-
+ vllm/v1/worker/gpu/model_runner.py  | 32 ++++++++++++++++++++++++++---
+ 3 files changed, 49 insertions(+), 4 deletions(-)
+
+diff --git a/vllm/v1/core/sched/scheduler.py b/vllm/v1/core/sched/scheduler.py
+index 8b188de..eada28d 100644
+--- a/vllm/v1/core/sched/scheduler.py
++++ b/vllm/v1/core/sched/scheduler.py
+@@ -1,6 +1,7 @@
+ # SPDX-License-Identifier: Apache-2.0
+ # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+ import itertools
++import os
+ import time
+ from collections import defaultdict, deque
+ from collections.abc import Iterable
+@@ -1970,6 +1971,9 @@ class Scheduler(SchedulerInterface):
+         model_runner_output: ModelRunnerOutput,
+     ) -> dict[int, EngineCoreOutputs]:
+         sampled_token_ids = model_runner_output.sampled_token_ids
++        exactsample_status = (getattr(model_runner_output, "exactsample_status", {})
++                      if os.environ.get("EXACTSAMPLE_DECODE") == "1" else {})
++        exactsample_errors = {}
+         logprobs = model_runner_output.logprobs
+         prompt_logprobs_dict = model_runner_output.prompt_logprobs_dict
+         prompt_token_id_logprobs_dict = (
+@@ -2043,6 +2047,13 @@ class Scheduler(SchedulerInterface):
+             if output_is_stale and request.drop_stale_output:
+                 continue
+ 
++            if exactsample_status.get(req_id, 0):
++                # A preemption may already have invalidated this verdict.
++                if not output_is_stale:
++                    exactsample_errors[req_id] = exactsample_status[req_id]
++                    request.resumable = False
++                continue
++
+             req_index = model_runner_output.req_id_to_index[req_id]
+             generated_token_ids = (
+                 sampled_token_ids[req_index] if sampled_token_ids else []
+@@ -2241,6 +2252,7 @@ class Scheduler(SchedulerInterface):
+             self.deferred_waiting.difference_update(stopped_preempted_reqs)
+ 
+         error_req_ids = set(self.grammar_compile_error_reqs)
++        error_req_ids.update(exactsample_errors)
+         self.grammar_compile_error_reqs.clear()
+         error_req_ids.update(self.encoder_cache_mismatch_reqs)
+         self.encoder_cache_mismatch_reqs.clear()
+@@ -2261,6 +2273,8 @@ class Scheduler(SchedulerInterface):
+                         request_id=request.request_id,
+                         new_token_ids=[],
+                         finish_reason=request.get_finished_reason(),
++                        stop_reason=(f"exactsample_status:{exactsample_errors[request.request_id]}"
++                                     if request.request_id in exactsample_errors else None),
+                         events=request.take_events(),
+                         trace_headers=request.trace_headers,
+                     )
+diff --git a/vllm/v1/engine/parallel_sampling.py b/vllm/v1/engine/parallel_sampling.py
+index 9baf785..b2b5978 100644
+--- a/vllm/v1/engine/parallel_sampling.py
++++ b/vllm/v1/engine/parallel_sampling.py
+@@ -1,6 +1,7 @@
+ # SPDX-License-Identifier: Apache-2.0
+ # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+ 
++import os
+ from copy import copy
+ from typing import cast
+ 
+@@ -93,7 +94,11 @@ class ParentRequest:
+         """
+         child_req_id = f"{index}_{self.request_id}"
+         self.child_requests.add(child_req_id)
+-        return child_req_id, self._get_child_sampling_params(index)
++        child_params = self._get_child_sampling_params(index)
++        if os.environ.get("EXACTSAMPLE_DECODE") == "1":
++            child_params = copy(child_params)
++            child_params.extra_args = dict(child_params.extra_args or {}, exactsample_parent_n=self.n)
++        return child_req_id, child_params
+ 
+     @property
+     def n(self) -> int:
+diff --git a/vllm/v1/worker/gpu/model_runner.py b/vllm/v1/worker/gpu/model_runner.py
+index c2f2997..62a85bc 100644
+--- a/vllm/v1/worker/gpu/model_runner.py
++++ b/vllm/v1/worker/gpu/model_runner.py
+@@ -18,6 +18,7 @@ instead of embedding feature-specific logic directly.
+ 
+ import functools
+ import gc
++import os
+ import time
+ from contextlib import AbstractContextManager
+ from copy import deepcopy
+@@ -506,6 +507,11 @@ class GPUModelRunner(LoRAModelRunnerMixin):
+                 num_bonus_tokens=self.model_state.num_new_sampled_tokens_per_step,
+             )
+ 
++        if os.environ.get("EXACTSAMPLE_DECODE") == "1" and self.sampler is not None:
++            from exactsample.vllm_bridge import initialize_runner
++
++            initialize_runner(self)
++
+         if self.is_pooling_model and self.is_last_pp_rank:
+             self.pooling_runner = PoolingRunner(self.model, self.vllm_config)
+         eplb_models_added |= self.eplb.maybe_register_model(
+@@ -1111,6 +1117,10 @@ class GPUModelRunner(LoRAModelRunnerMixin):
+ 
+     def finish_requests(self, scheduler_output: SchedulerOutput) -> None:
+         finished_req_ids = scheduler_output.finished_req_ids
++        if os.environ.get("EXACTSAMPLE_DECODE") == "1" and self.sampler is not None:
++            from exactsample.vllm_bridge import finish_requests
++
++            finish_requests(self, finished_req_ids)
+         if self.pooling_runner is not None:
+             # Preempted docs keep their query-use reservation until rescheduled.
+             self.pooling_runner.on_requests_finished(finished_req_ids)
+@@ -1182,6 +1192,10 @@ class GPUModelRunner(LoRAModelRunnerMixin):
+             if self.is_last_pp_rank and new_req_data.sampling_params is not None:
+                 assert self.sampler is not None
+                 self.sampler.add_request(req_index, new_req_data.sampling_params)
++                if os.environ.get("EXACTSAMPLE_DECODE") == "1":
++                    from exactsample.vllm_bridge import register_request
++
++                    register_request(self, req_id, req_index, new_req_data.sampling_params)
+                 assert self.prompt_logprobs_worker is not None
+                 self.prompt_logprobs_worker.add_request(
+                     req_id, req_index, new_req_data.sampling_params
+@@ -1578,9 +1592,15 @@ class GPUModelRunner(LoRAModelRunnerMixin):
+             sample_hidden_states = hidden_states[input_batch.logits_indices]
+             logits = self.model.compute_logits(sample_hidden_states)
+ 
++        exactsample_output = None
++        if os.environ.get("EXACTSAMPLE_DECODE") == "1":
++            from exactsample.vllm_bridge import try_sample
++
++            exactsample_output = try_sample(self, logits, input_batch, grammar_output)
++
+         # A diffusion prefill has no logit rows even when a bitmask row
+         # arrived for it.
+-        if grammar_output is not None and logits.shape[0] > 0:
++        if exactsample_output is None and grammar_output is not None and logits.shape[0] > 0:
+             # Apply grammar bitmask to the logits in-place.
+             assert self.structured_outputs_worker is not None
+             self.structured_outputs_worker.apply_grammar_bitmask(
+@@ -1591,7 +1611,9 @@ class GPUModelRunner(LoRAModelRunnerMixin):
+             )
+ 
+         sampler_output: SamplerOutput | None
+-        if input_batch.num_reqs == 0:
++        if exactsample_output is not None:
++            sampler_output = exactsample_output
++        elif input_batch.num_reqs == 0:
+             # This rank owns no requests this step. It contributes an
+             # all-padding block to the gather below.
+             sampler_output = None
+@@ -2140,7 +2162,11 @@ class GPUModelRunner(LoRAModelRunnerMixin):
+             pending_aux_output = self.aux_output_connector.prepare_output(input_batch)
+ 
+         # Start async output copy here so that it can overlap with speculator proposal.
+-        async_output = AsyncOutput(
++        output_type = AsyncOutput
++        if os.environ.get("EXACTSAMPLE_DECODE") == "1" and hasattr(sampler_output, "exactsample_status"):
++            from exactsample.vllm_async import ExactSampleAsyncOutput
++            output_type = ExactSampleAsyncOutput
++        async_output = output_type(
+             model_runner_output=model_runner_output,
+             sampler_output=sampler_output,
+             num_sampled_tokens=num_sampled,
+-- 
+2.53.0
+

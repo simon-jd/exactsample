@@ -1,0 +1,82 @@
+{
+  "status": "passed",
+  "tools_run": [
+    {
+      "tool": "memcheck",
+      "command": [
+        "/usr/local/cuda-13.2/bin/compute-sanitizer",
+        "--tool",
+        "memcheck",
+        "--error-exitcode",
+        "1",
+        "--log-file",
+        "results/sanitizer/memcheck.log",
+        ".envs/p1-A/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_cuda",
+        "tests.test_fused",
+        "-v"
+      ],
+      "returncode": 0
+    },
+    {
+      "tool": "racecheck",
+      "command": [
+        "/usr/local/cuda-13.2/bin/compute-sanitizer",
+        "--tool",
+        "racecheck",
+        "--error-exitcode",
+        "1",
+        "--log-file",
+        "results/sanitizer/racecheck.log",
+        ".envs/p1-A/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_cuda",
+        "tests.test_fused",
+        "-v"
+      ],
+      "returncode": 0
+    },
+    {
+      "tool": "initcheck",
+      "command": [
+        "/usr/local/cuda-13.2/bin/compute-sanitizer",
+        "--tool",
+        "initcheck",
+        "--error-exitcode",
+        "1",
+        "--log-file",
+        "results/sanitizer/initcheck.log",
+        ".envs/p1-A/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_cuda",
+        "tests.test_fused",
+        "-v"
+      ],
+      "returncode": 0
+    },
+    {
+      "tool": "synccheck",
+      "command": [
+        "/usr/local/cuda-13.2/bin/compute-sanitizer",
+        "--tool",
+        "synccheck",
+        "--error-exitcode",
+        "1",
+        "--log-file",
+        "results/sanitizer/synccheck.log",
+        ".envs/p1-A/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_cuda",
+        "tests.test_fused",
+        "-v"
+      ],
+      "returncode": 0
+    }
+  ],
+  "qualification": true
+}

@@ -1,0 +1,226 @@
+{
+  "scope": "exactsample CUDA fused path, float64 inputs, list_max=0",
+  "qualification": true,
+  "preregistered_sample_count_used": true,
+  "stat_plan_sha256": "f1a22b551cee2bad70e69a7d096577d784a2c174fb51b1a48e9e256999b30d44",
+  "samples_per_cell": 2000000,
+  "rng": {
+    "seed_start": 65536,
+    "stream_id": 19,
+    "position": 101
+  },
+  "power": {
+    "minimum_alternative_g": 50.0,
+    "worst_critical_g": 24.321886347856854,
+    "power_lower_bound": 0.9999999964446864
+  },
+  "cells": [
+    {
+      "cell": "uniform4",
+      "counts": [
+        499501,
+        499828,
+        500442,
+        500229
+      ],
+      "expected": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "target_row_float64_sha256": "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925",
+      "g": 1.0528214452845646,
+      "p_value": 0.7884736085965193,
+      "hard_failure": null,
+      "rejected": false
+    },
+    {
+      "cell": "skew4",
+      "counts": [
+        1939824,
+        20009,
+        20102,
+        20065
+      ],
+      "expected": [
+        0.97,
+        0.01,
+        0.01,
+        0.01
+      ],
+      "target_row_float64_sha256": "9cce9cb6f85b968a3cbe7195ff4d26f913f080f0ae0c331041cb020e804a97df",
+      "g": 0.7503563110066196,
+      "p_value": 0.8613004702687314,
+      "hard_failure": null,
+      "rejected": false
+    },
+    {
+      "cell": "temperature2",
+      "counts": [
+        1142121,
+        571806,
+        286073
+      ],
+      "expected": [
+        0.5714285714285714,
+        0.2857142857142857,
+        0.14285714285714285
+      ],
+      "target_row_float64_sha256": "2fa9f54da2897083fbc606f3e87d49b17ea5e469a6afd75cb5d05f118097641d",
+      "g": 1.1736839887047381,
+      "p_value": 0.556080620495284,
+      "hard_failure": null,
+      "rejected": false
+    },
+    {
+      "cell": "topk2",
+      "counts": [
+        1333223,
+        666777,
+        0,
+        0
+      ],
+      "expected": [
+        0.6666666666666666,
+        0.3333333333333333,
+        0,
+        0
+      ],
+      "target_row_float64_sha256": "e0c421efcb7c1ff715285f034677dfa93ce146fcadf431272189d2fbdf871dad",
+      "g": 0.02738949487542186,
+      "p_value": 0.868552245335031,
+      "hard_failure": null,
+      "rejected": false
+    },
+    {
+      "cell": "topp_boundary",
+      "counts": [
+        999555,
+        1000445,
+        0,
+        0
+      ],
+      "expected": [
+        0.5,
+        0.5,
+        0,
+        0
+      ],
+      "target_row_float64_sha256": "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925",
+      "g": 0.39605001307131715,
+      "p_value": 0.5291362777573817,
+      "hard_failure": null,
+      "rejected": false
+    },
+    {
+      "cell": "minp",
+      "counts": [
+        1333223,
+        666777,
+        0,
+        0
+      ],
+      "expected": [
+        0.6666666666666666,
+        0.3333333333333333,
+        0,
+        0
+      ],
+      "target_row_float64_sha256": "e0c421efcb7c1ff715285f034677dfa93ce146fcadf431272189d2fbdf871dad",
+      "g": 0.02738949487542186,
+      "p_value": 0.868552245335031,
+      "hard_failure": null,
+      "rejected": false
+    },
+    {
+      "cell": "onehot_ratio",
+      "counts": [
+        499733,
+        1500267
+      ],
+      "expected": [
+        0.25,
+        0.75
+      ],
+      "target_row_float64_sha256": "af0f673d95b57267573273ec1aa2d2a775900902ac5631536ec76e655bbf035f",
+      "g": 0.19012656603729283,
+      "p_value": 0.6628112985893954,
+      "hard_failure": null,
+      "rejected": false
+    },
+    {
+      "cell": "onehot_coupled",
+      "counts": [
+        499673,
+        1500327
+      ],
+      "expected": [
+        0.25,
+        0.75
+      ],
+      "target_row_float64_sha256": "af0f673d95b57267573273ec1aa2d2a775900902ac5631536ec76e655bbf035f",
+      "g": 0.28518545685460595,
+      "p_value": 0.5933224522429947,
+      "hard_failure": null,
+      "rejected": false
+    },
+    {
+      "cell": "fullq_ratio",
+      "counts": [
+        1500425,
+        499575
+      ],
+      "expected": [
+        0.75,
+        0.25
+      ],
+      "target_row_float64_sha256": "a2138e1c768556e54f27b4942dd5a18506bfc59d5990950a71bc00514936060a",
+      "g": 0.48175769350370956,
+      "p_value": 0.4876272306062225,
+      "hard_failure": null,
+      "rejected": false
+    },
+    {
+      "cell": "accepted_length3",
+      "counts": [
+        1000527,
+        499114,
+        249905,
+        250454
+      ],
+      "expected": [
+        0.5,
+        0.25,
+        0.125,
+        0.125
+      ],
+      "target_row_float64_sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+      "g": 2.708670340115475,
+      "p_value": 0.43875587122800075,
+      "hard_failure": null,
+      "rejected": false
+    }
+  ],
+  "initial_failure": false,
+  "environment": {
+    "python": "3.12.15",
+    "numpy": "2.3.5",
+    "scipy": "1.18.1",
+    "torch": "2.13.0+cu130",
+    "cuda": "13.0",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "capability": [
+      8,
+      9
+    ]
+  },
+  "source_sha256": {
+    "python/exactsample/reference.py": "3dee62ab356f1a45c49f07f7979b226cd503372f9e96cc742c3e6b40d15cf796",
+    "python/exactsample/rng.py": "205873059819314bb194bd5388713253bc59501c4600bfefeeeb3b5299e7488f",
+    "csrc/verify/verify.cu": "2d292587eb752c5f8d4d70f4a2cc4cdd77635dbbc2309efc44a497e7dd798523",
+    "csrc/verify/fused.cuh": "2695aac337e045c95bd5914b41d17b3c0bc17ab3dc54cbff1db042e707e95c61",
+    "include/exactsample/philox.h": "83bd4390803fc1cb9906777cca3fc911ae068bad3e6aea287f7117782992583e"
+  },
+  "elapsed_seconds": 10.695071697235107
+}

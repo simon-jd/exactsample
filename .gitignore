@@ -1,0 +1,25 @@
+.venv/
+.envs/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+*.so
+*.o
+*.a
+*.ncu-rep
+*.nsys-rep
+
+# Generated run output and local runtimes stay on disk, not in git.
+/results/*
+# except the results the README cites
+!/results/sampler/
+!/results/agreement.json
+!/results/stat-cuda.json
+!/results/stat-cuda-predicate.json
+!/results/sanitizer/
+/results/sanitizer/*
+!/results/sanitizer/summary.json
+/.runtime/

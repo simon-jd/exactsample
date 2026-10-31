@@ -1,0 +1,12 @@
+include CMakeLists.txt setup.py
+recursive-include include *.h *.cuh
+recursive-include csrc *.cpp *.cu *.cuh
+recursive-include docs *.md
+recursive-include scripts *.sh
+recursive-include tests *.py *.yaml *.sh
+recursive-include reference *.py *.md
+recursive-include conformance *.py *.md
+recursive-include bench *.py *.sh
+recursive-include integration *.py *.md
+recursive-include vllm-patches *.patch *.md *.py *.json
+global-exclude *.so *.dll *.dylib *.pyc

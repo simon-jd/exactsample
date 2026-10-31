@@ -1,0 +1,36 @@
+{
+  "version": "exactsample-stat-v1",
+  "frozen_at": "2026-10-13",
+  "test": "multinomial likelihood-ratio G test; scipy.stats.chi2.sf",
+  "family_error_rate": 0.01,
+  "multiplicity": "Holm step-down across the ten cells, per implementation/version/path",
+  "samples_per_cell": 2000000,
+  "target_total_variation": 0.005,
+  "minimum_power": 0.9,
+  "max_categories": 8,
+  "family_cells": 10,
+  "seed_start": 65536,
+  "stream_id": 19,
+  "position": 101,
+  "proposal_rng": "NumPy PCG64(seed_start XOR 0x51A7), independent of exactsample Philox; full-q draft 0 iff uniform < 1/4",
+  "retry": {
+    "maximum": 1,
+    "seed_start": 1099511693312,
+    "rule": "Any rejected cell triggers one full-family diagnostic rerun with disjoint seeds. The initial rejection remains a qualification failure, even if the rerun passes. No selective replacement or optional stopping."
+  },
+  "power_argument": "For true q with TV(q,p)>=delta, TV(empirical,q)<=delta/2 implies G=2N KL(empirical||p)>=N delta^2 by Pinsker. A union bound over <=2^m subsets and Hoeffding gives Pr[TV(empirical,q)>delta/2]<=2^m exp(-N delta^2/2). N=2000000, m<=8, delta=.005 gives <3.56e-9. N delta^2=50 exceeds the chi-square df<=7 upper alpha/10 quantile. This power bound assumes independent categorical trials; chi-square null calibration is asymptotic, not an exact finite-sample FWER theorem.",
+  "zero_probability_bins": "Any observed token outside expected support is a hard failure before G; omitted zero bins do not contribute degrees of freedom.",
+  "small_bins": "All nondeterministic expected bins are >=1/100. No merging, fitting, or data-dependent cell selection.",
+  "cells": [
+    {"name":"uniform4", "kind":"sample", "weights":[1,1,1,1], "expected":[0.25,0.25,0.25,0.25]},
+    {"name":"skew4", "kind":"sample", "weights":[97,1,1,1], "expected":[0.97,0.01,0.01,0.01]},
+    {"name":"temperature2", "kind":"sample", "weights":[16,4,1], "params":{"temperature":2}, "expected":[0.5714285714285714,0.2857142857142857,0.14285714285714285]},
+    {"name":"topk2", "kind":"sample", "weights":[8,4,2,1], "params":{"top_k":2}, "expected":[0.6666666666666666,0.3333333333333333,0,0]},
+    {"name":"topp_boundary", "kind":"sample", "weights":[1,1,1,1], "params":{"top_p":0.5}, "expected":[0.5,0.5,0,0]},
+    {"name":"minp", "kind":"sample", "weights":[8,4,2,1], "params":{"min_p":0.4}, "expected":[0.6666666666666666,0.3333333333333333,0,0]},
+    {"name":"onehot_ratio", "kind":"onehot", "weights":[1,3], "expected":[0.25,0.75]},
+    {"name":"onehot_coupled", "kind":"coupled", "weights":[1,3], "expected":[0.25,0.75]},
+    {"name":"fullq_ratio", "kind":"full", "weights":[3,1], "expected":[0.75,0.25]},
+    {"name":"accepted_length3", "kind":"accepted", "weights":[1,1], "expected":[0.5,0.25,0.125,0.125]}
+  ]
+}

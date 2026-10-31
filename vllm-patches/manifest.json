@@ -1,0 +1,26 @@
+{
+  "version": "v0.31.0",
+  "source": "exact 0.31.0 wheel source; model_runner additionally byte-verified against tag raw download",
+  "files": {
+    "vllm/v1/core/sched/scheduler.py": {
+      "before_sha256": "f820bee4f42b878b262a30f3728a97d7413477b2a277748e20f2528ac2ec2f2a",
+      "after_sha256": "09e3a6859ba7aa8621afdb1822ac82281338341f01e192e49c279ff3afdde13a",
+      "insertions": 14,
+      "deletions": 0
+    },
+    "vllm/v1/engine/parallel_sampling.py": {
+      "before_sha256": "a0d5e31f20cb3a728b76880d58658b23693c2608e0393aa767030b2b437a9ed6",
+      "after_sha256": "f90bf1bf06ce3214af2ede48fbd7fb92676d4e138dd619198f2b55efe5d2e2cb",
+      "insertions": 6,
+      "deletions": 1
+    },
+    "vllm/v1/worker/gpu/model_runner.py": {
+      "before_sha256": "725c47114e148ade3a26b4cc9c5f7295588fdd387afc3cb5fdb2d16513a1bb5c",
+      "after_sha256": "e41bcebcfcce80f4a7c2d9eace8f1714da935be657b012252aabc8d17946d415",
+      "insertions": 29,
+      "deletions": 3
+    }
+  },
+  "patch": "0001-Add-opt-in-exactsample-decode-with-asynchronous-request-errors.patch",
+  "patch_sha256": "32d74b3e5daa41520fcf241f979b417a6dd07287f468f83993ec30670f2bec66"
+}

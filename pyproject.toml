@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "exactsample"
+version = "0.1.0"
+description = "Position-addressed token sampling and ragged speculative verification"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26"]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "scipy>=1.12"]
+cuda = ["torch==2.13.0"]
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.setuptools.package-data]
+exactsample = ["*.so", "*.dll", "*.dylib"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["python", "."]
+markers = [
+  "cuda: requires a working CUDA device and the compiled exactsample operator",
+  "statistical: preregistered large-sample tests",
+  "integration: requires model weights and a supported inference engine",
+]
