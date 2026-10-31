@@ -1,4 +1,4 @@
-# Batch-invariant sampling and speculative verification in CUDA
+# exactsample: batch-invariant sampling and speculative verification in CUDA
 
 A CUDA library (a PyTorch custom op, with a vLLM integration) for the last
 step of LLM decoding: sampling the next token from logits, and verifying a
@@ -16,25 +16,35 @@ decoding; ratio (Leviathan/Chen) and coupled verification; one-hot drafts and
 full proposal distributions; ragged batches, with a per-request error status
 instead of a failed batch.
 
-**Speed on real logits** (Qwen3-8B, 151,936-token vocabulary, RTX 4090; GPU
-time per call in microseconds, kernels only, lower is better; full tables
-below):
+**Results**
 
-| Workload | exactsample | vLLM 0.31 | FlashInfer 0.7 |
-|---|---:|---:|---:|
-| T=0.6, top-k 20, top-p 0.95, 1 request | **36** | 129 | 96 |
-| the same, 128 requests | **96** | 461 | 857 |
-| the same, verifying 4 drafts for each of 64 requests (320 rows) | **382** | 1,532 | 4,583 |
-| T=0.7, top-p 0.9, 128 requests | **110** | 499 | 794 |
-| T=1.0 only, 1 request | 17 | **10** | 56 |
-| T=1.0 only, 128 requests | **84** | 177 | 782 |
+- **Exact.** On 192 requests built from captured Qwen3-8B logits (352 rows,
+  with and without 4-token drafts), every token, accepted length and status
+  equals the FP64 NumPy reference's, with no FP64 fallback needed. A
+  preregistered statistical plan passes in all ten cells, and the four
+  compute-sanitizer tools report no errors ([Correctness](#correctness)).
+- **Fast where it matters.** With Qwen3's recommended settings (T=0.6, top-k
+  20, top-p 0.95), a call for 128 requests takes 96 us of GPU time,
+  against 455 us for vLLM 0.31's sampler and 626 us for FlashInfer
+  0.7's fastest public path. Verifying 4 drafts for each of 64 requests takes
+  382 us against 1,535 and 2,924. Medians of 10 runs; L2-cold
+  times are in the tables.
+- **Where it loses.** Temperature-only sampling of up to eight requests:
+  vLLM's single Gumbel kernel takes 10 us for one request against
+  17, because exactsample reads each row twice (statistics, then the
+  certified draw) in five launches. With top-p alone and one request,
+  FlashInfer is slightly faster (34 vs 39 us).
 
-Temperature-only sampling of up to eight requests is the case vLLM wins on GPU
-time, by 1.3 to 1.7 times: its Gumbel kernel is one launch with no error
-bounds, while exactsample reads each row twice (statistics, then the certified draw)
-in five launches. From 32 requests exactsample is level or ahead, and counting host
-overhead (the call time below) it is ahead in every cell, 30 vs 50 us for one
-request.
+**What is new here.** Keying the noise by request and position is not: vLLM's
+model-runner-v2 sampler derives its Gumbel noise from a per-request seed and
+the position, and FlashInfer's samplers take a seed and an offset per request.
+vLLM's batch-invariant mode makes the model's logits independent of the
+batch. What exactsample adds is that the decisions themselves are exact:
+top-k and top-p cuts with ties split by token ID, min-p and verification
+thresholds settled against an FP64 definition, so equal logits and keys give
+equal tokens on any batch layout and any kernel split. It also gives each use
+of randomness its own substream (target draw, ratio acceptance, residual
+draw) and reports a status per request instead of failing the batch.
 
 ## How it works
 
@@ -102,62 +112,80 @@ requests (one row each) and 4-draft verification requests (five consecutive
 steps of one prompt, the tokens actually sampled as drafts) from them, and
 times each implementation in its own process:
 
-- **exactsample**: this library.
-- **vLLM 0.31 MRv2**: its Triton kernels in the order its sampler applies them
-  (temperature, min-p, top-k/top-p, Gumbel sampling or rejection sampling).
-- **FlashInfer 0.7.0.post1**: `top_k_top_p_sampling_from_logits` for ordinary
-  sampling; softmax, the renormalization APIs and `chain_speculative_sampling`
-  for verification.
+- **exactsample**: this library, with its plan (a fixed workspace) made once.
+- **vLLM 0.31, model-runner-v2**: the sampler's own sequence for seeded
+  requests: an FP32 copy of the logits, temperature and min-p in place, the
+  per-step gather of each row's top-k and top-p, vLLM's Triton top-k/top-p
+  kernel, then its Triton Gumbel sampler or rejection sampler.
+- **FlashInfer 0.7.0.post1**: both public entry points, scaled logits into
+  `sampling_from_logits` or `top_k_top_p_sampling_from_logits`, and
+  `sampling.softmax` with per-row temperature into the probability samplers;
+  each cell shows the faster of the two (named in
+  `results/sampler/summary.json`). Verification is softmax, the
+  renormalization APIs and `chain_speculative_sampling` on a view of the
+  rows, with a persistent one-hot draft buffer.
 
-Each starts from the same bf16 logits. The baselines include their dtype
-conversion and probability materialization, because exactsample consumes raw logits.
-vLLM skips its top-k/top-p kernels when no request uses them, and exactsample is told
-the same (`top_k_top_p`, below). Their RNGs differ from exactsample's, so only
-performance is compared here; contract differences are covered by
-`conformance/`.
+Everything a caller can keep across decode steps (index and parameter
+tensors, buffers) is prepared outside the timed call for every
+implementation, and all start from the same bf16 logits. Their RNGs differ,
+so only speed is compared here; contract differences are covered by
+`conformance/`. vLLM skips its top-k/top-p kernels when no request uses
+them, and exactsample is told the same (`top_k_top_p`, below).
 
-### T=0.6, top-k 20, top-p 0.95 (Qwen3's recommended settings): GPU time per call, us (call time with launch overhead)
+`bench/run_sampler.sh` runs every implementation 10 times, interleaved,
+each run a fresh process holding the GPU lock. A run reports, per call, the
+GPU time (kernel time from CUPTI, averaged over 20 profiled calls), the call
+time (CUDA events over 100 back-to-back calls, so launch overhead included)
+and a cold call (median of 30 calls, each after writing 256 MB to evict the
+72 MB L2). The tables give the median GPU time over runs, its interquartile
+range, and the cold-call median in brackets. Run-to-run spread is small: the
+interquartile range is within 1% of the median in 69 of 72 cells and within
+10% in all. Clocks were not locked (no administrator rights on the machine,
+whose GPU also drives a desktop); the SM clock at the start of each run,
+recorded in `results/sampler/runs/clocks.csv`, was 2,805 or 2,820 MHz in 39
+of the 40 runs (one sample caught the GPU still at its 210 MHz idle clock).
 
-| requests x rows each | exactsample | vLLM 0.31 | FlashInfer 0.7 |
-|---|---:|---:|---:|
-| 1 x 1 | 36 (42) | 129 (181) | 96 (103) |
-| 8 x 1 | 42 (47) | 137 (182) | 114 (121) |
-| 32 x 1 | 53 (58) | 163 (193) | 175 (161) |
-| 128 x 1 | 96 (101) | 461 (466) | 857 (844) |
-| 1 x 5 | 41 (46) | 134 (238) | 219 (272) |
-| 8 x 5 | 59 (59) | 148 (244) | 456 (515) |
-| 32 x 5 | 105 (110) | 704 (710) | 2235 (2336) |
-| 64 x 5 | 382 (386) | 1532 (1538) | 4583 (4695) |
-
-### T=1.0: GPU time per call, us (call time with launch overhead)
-
-| requests x rows each | exactsample | vLLM 0.31 | FlashInfer 0.7 |
-|---|---:|---:|---:|
-| 1 x 1 | 17 (30) | 10 (50) | 56 (59) |
-| 8 x 1 | 20 (29) | 16 (51) | 72 (75) |
-| 32 x 1 | 33 (36) | 33 (51) | 94 (101) |
-| 128 x 1 | 84 (87) | 177 (179) | 782 (780) |
-| 1 x 5 | 24 (30) | 14 (102) | 97 (170) |
-| 8 x 5 | 49 (52) | 32 (99) | 200 (269) |
-| 32 x 5 | 131 (134) | 232 (237) | 1239 (1328) |
-| 64 x 5 | 325 (327) | 524 (526) | 2548 (2680) |
-
-### T=0.7, top-p 0.9: GPU time per call, us (call time with launch overhead)
+### T=0.6, top-k 20, top-p 0.95 (Qwen3's recommended settings): median GPU time per call, us (IQR); cold L2 in brackets
 
 | requests x rows each | exactsample | vLLM 0.31 | FlashInfer 0.7 |
 |---|---:|---:|---:|
-| 1 x 1 | 39 (43) | 57 (155) | 63 (67) |
-| 8 x 1 | 43 (48) | 83 (154) | 93 (100) |
-| 32 x 1 | 57 (61) | 224 (235) | 140 (146) |
-| 128 x 1 | 110 (114) | 499 (494) | 794 (793) |
-| 1 x 5 | 43 (47) | 79 (212) | 164 (214) |
-| 8 x 5 | 64 (68) | 384 (400) | 419 (476) |
-| 32 x 5 | 135 (140) | 778 (780) | 1964 (2081) |
-| 64 x 5 | 415 (418) | 1677 (1681) | 4076 (4054) |
+| 1 x 1 | 36 (36–36) [48] | 128 (128–128) [147] | 60 (60–60) [66] |
+| 8 x 1 | 42 (42–42) [54] | 137 (137–137) [158] | 78 (78–78) [90] |
+| 32 x 1 | 53 (53–53) [74] | 163 (163–163) [202] | 122 (122–122) [153] |
+| 128 x 1 | 96 (96–96) [153] | 455 (455–456) [486] | 626 (624–626) [658] |
+| 1 x 5 | 41 (41–41) [53] | 120 (120–120) [139] | 146 (133–148) [150] |
+| 8 x 5 | 59 (59–59) [84] | 147 (147–147) [194] | 292 (292–292) [338] |
+| 32 x 5 | 117 (106–117) [187] | 704 (703–704) [751] | 1395 (1394–1395) [1431] |
+| 64 x 5 | 382 (382–387) [436] | 1535 (1534–1535) [1595] | 2924 (2921–2924) [2968] |
 
-`gpu` is summed kernel time from CUPTI; the call time (CUDA events over 100
-back-to-back calls) adds host launch overhead, and a cold call after an L2
-flush is in `results/sampler/*.jsonl`. Reproduce with `bench/run_sampler.sh`.
+### T=1.0: median GPU time per call, us (IQR); cold L2 in brackets
+
+| requests x rows each | exactsample | vLLM 0.31 | FlashInfer 0.7 |
+|---|---:|---:|---:|
+| 1 x 1 | 17 (17–17) [22] | 10 (10–10) [17] | 26 (26–26) [31] |
+| 8 x 1 | 20 (20–20) [30] | 16 (16–16) [28] | 41 (41–41) [51] |
+| 32 x 1 | 33 (33–33) [51] | 33 (33–33) [64] | 55 (55–55) [87] |
+| 128 x 1 | 84 (83–84) [134] | 179 (179–179) [211] | 172 (172–172) [199] |
+| 1 x 5 | 24 (24–24) [32] | 13 (13–13) [23] | 67 (67–67) [79] |
+| 8 x 5 | 49 (49–49) [69] | 32 (32–32) [70] | 91 (91–91) [131] |
+| 32 x 5 | 131 (130–131) [192] | 232 (232–233) [267] | 475 (475–475) [509] |
+| 64 x 5 | 324 (323–324) [381] | 523 (523–524) [581] | 1008 (1008–1008) [1048] |
+
+### T=0.7, top-p 0.9: median GPU time per call, us (IQR); cold L2 in brackets
+
+| requests x rows each | exactsample | vLLM 0.31 | FlashInfer 0.7 |
+|---|---:|---:|---:|
+| 1 x 1 | 39 (39–39) [49] | 56 (56–57) [68] | 34 (34–34) [39] |
+| 8 x 1 | 43 (43–43) [55] | 83 (83–83) [102] | 49 (49–49) [59] |
+| 32 x 1 | 57 (57–57) [78] | 223 (223–224) [261] | 63 (63–63) [96] |
+| 128 x 1 | 109 (109–109) [165] | 474 (474–474) [522] | 394 (394–394) [429] |
+| 1 x 5 | 43 (43–43) [55] | 79 (79–79) [96] | 112 (111–112) [127] |
+| 8 x 5 | 64 (64–64) [88] | 383 (383–383) [429] | 177 (177–177) [220] |
+| 32 x 5 | 135 (135–135) [204] | 756 (756–756) [800] | 976 (976–977) [1017] |
+| 64 x 5 | 413 (413–413) [462] | 1634 (1633–1634) [1693] | 2130 (2130–2131) [2175] |
+
+Per-kernel times for every cell and run are in `results/sampler/runs/`, and
+`python bench/summarize.py results/sampler/runs` regenerates the tables.
 
 ## Use it
 
@@ -208,8 +236,11 @@ in [integration/](integration/README.md).
 - A request with a very large top-k (thousands) or a top-p nucleus of
   thousands of tokens is finished by one block per row and is several times
   slower than the common cases above.
-- Up to eight temperature-only requests take 1.3 to 1.7 times vLLM's GPU
-  time ([docs/design-tradeoffs.md](docs/design-tradeoffs.md)).
+- Up to eight temperature-only requests take 1.25 to 1.85 times vLLM's GPU
+  time, and one top-p-only request takes 1.15 times FlashInfer's
+  ([docs/design-tradeoffs.md](docs/design-tradeoffs.md)).
+- Benchmarked on captured logits of one model; there is no end-to-end
+  serving measurement yet.
 - CUDA graph capture of the call is not supported.
 - The vLLM bridge covers greedy draft models and ordinary sampling; other
   speculative methods and sampling features fall back to vLLM's own path.

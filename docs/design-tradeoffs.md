@@ -79,8 +79,8 @@ and vLLM do for top-k and top-p.
 
 **Why.** On real logits the mass sits within a few logits of the maximum, so a
 top-k 20 row's candidates fall in a couple of bins and selection runs on at
-most 2,048 tokens in shared memory. The Qwen3-settings cells take 2.5 to 6.7
-times less GPU time than vLLM's.
+most 2,048 tokens in shared memory. The Qwen3-settings cells take 2.5 to 6.0
+times less GPU time than vLLM's and 1.7 to 12 times less than FlashInfer's.
 
 **Cost.** Two passes over each list row, and a flat distribution or a large k
 falls back to a radix select over the whole row in one block.
@@ -100,10 +100,10 @@ last-arrival merge needs no grid barrier, and merging in slice order rather
 than arrival order keeps the result deterministic.
 
 **Cost.** Partial results in the workspace and one atomic per row and pass.
-More slices did not pay: 64 or 128 per row saved under 1 us on one row, and
-cost about 1 us (64) or 5 to 6 us (128) at four rows and on a 5-row request,
-from more blocks to schedule and merge. For the same reason `row_stats` runs 256-thread blocks: 512 blocks
-of 512 threads needed two waves, and 32 rows took 12.6 us instead of 9.7.
+More slices per row (64 or 128) were tried and saved less on one row than
+they cost on a few rows, from more blocks to schedule and merge. For the same
+reason `row_stats` runs 256-thread blocks: 512 blocks of 512 threads do not
+fit in one wave on 128 SMs.
 
 ## A fixed kernel sequence, specialized only from host knowledge
 
@@ -124,13 +124,13 @@ changes a result: without the list kernels, greedy and failed rows are
 finished by `fused_rows<FULL>`, and a row that does filter takes the
 full-row path.
 
-**Cost.** Each launch costs 1.2 to 2.2 us even with nothing to do, and a
+**Cost.** A launch with nothing to do still costs 1.4 to 1.6 us, and a
 temperature-only call is five launches with two passes over each row. Up to
-eight such requests, vLLM's single Gumbel kernel takes 1.3 to 1.7 times less
-GPU time (10 vs 17 us for one request, 32 vs 49 us for eight 5-row
-verifications). From 32 requests exactsample is level or ahead (84 vs 177 us at 128),
-and its call time, which adds host overhead, is lower in every cell: 30 vs
-50 us for one request. A single-kernel path would need the maximum before the
+eight such requests, vLLM's single Gumbel kernel takes 1.25 to 1.85 times
+less GPU time (10 vs 17 us for one request, 32 vs 49 us for eight 5-row
+verifications). From 32 requests exactsample is level or ahead (84 vs 179 us
+at 128), and its call time, which adds host overhead, is lower in every cell:
+29 vs 50 us for one request. A single-kernel path would need the maximum before the
 draw (or the error analysis redone around per-block maxima) and a second
 implementation of every fallback.
 
@@ -151,8 +151,8 @@ five independent rows.
 for accepted positions, are computed and thrown away. Such a residual draw
 excludes the draft token, usually the argmax, which left the pruning without
 its lower bound until a runner-up took its place ([design.md](design.md),
-Pruning the draw): that change cut `row_scan` from 52 to 36 us at eight 5-row
-requests.
+Pruning the draw); with it, `row_scan` takes 32 us at eight 5-row
+temperature-only requests.
 
 ## A plan with a fixed workspace
 

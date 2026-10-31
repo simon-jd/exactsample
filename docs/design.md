@@ -36,8 +36,8 @@ to the other variant returns before it loads anything; that early exit is most
 of the cost of the variant a batch does not use. Its arguments are
 `__grid_constant__`: the kernel passes them by reference to code that is not
 inlined, and the compiler otherwise copies all 736 bytes to local memory in
-every thread before the exit, which made that launch cost 4.0 us instead of
-1.6.
+every thread before the exit; with them in constant space, a launch with
+nothing to do costs 1.4 to 1.6 us.
 
 Logits are read in groups of four tokens, which is also the Philox block: one
 Philox call yields the noise for all four. Contiguous rows (checked on the
@@ -120,8 +120,9 @@ get its noise computed. For those rows `row_stats` also keeps a runner-up, the
 best of the other threads' maxima (a valid token near the top, found in the
 block reduction at no cost per token). When it is certainly kept (min-p and a
 weight above FP64 underflow, by the FP32 tests with their margins) its score
-bounds the draw instead. On the benchmark's verification batches this cut
-`row_scan` by a third (52 to 36 us for eight requests of five rows).
+bounds the draw instead. Without it those draws had no lower bound and every
+token's noise was computed; with it, `row_scan` takes 32 us for eight
+temperature-only requests of five rows.
 
 For tokens that remain, a cheap upper bound on the noise comes first: two
 `__logf` and the inequality `-log(u) >= 1 - u`. Only tokens whose bound
@@ -183,16 +184,17 @@ also the normalizer for the ratio test.
 
 - Every row is read by `row_stats`; sliced rows once more by `row_scan`; list
   rows with a top-k or top-p twice more (`row_hist`, `row_gather`). At 320 rows
-  (97 MB of bf16 logits) each pass is 110 to 130 us, close to the memory
-  bandwidth. At one row fixed costs dominate: for a temperature-only call,
-  `row_stats` takes about 5 us, `row_scan` 8, and each of the other three
-  launches 1.6 to 2.2 (per-kernel times from CUPTI).
-- List work is FP64 on at most 256 tokens in one warp (16 to 20 us per row on
-  one SM, overlapped across rows).
+  (97 MB of bf16 logits) `row_stats`, `row_hist` and `row_gather` take 100 to
+  120 us each, close to the memory bandwidth; `row_scan`, which also computes
+  noise for the tokens it cannot prune, takes 215 us on temperature-only rows.
+  At one row fixed costs dominate: for a temperature-only call, `row_stats`
+  takes about 4 us, `row_scan` 8, and each of the other three launches 1.4 to
+  1.9 (per-kernel times from CUPTI, `results/sampler/runs/`).
+- List work is FP64 on at most 256 tokens in one warp (about 17 us for one
+  row on one SM, overlapped across rows).
 - A full-row top-p touches the row once per chunk of the nucleus; a flat
   distribution with a large nucleus is the slowest case.
-- An FP64 fallback costs one FP64 pass over the row (about 0.5 ms on one SM
-  for a 152k vocabulary).
+- An FP64 fallback costs one FP64 pass over the row by one block.
 - A large top-k that the window cannot isolate costs up to eight radix passes.
 
 ## Determinism and batch invariance
