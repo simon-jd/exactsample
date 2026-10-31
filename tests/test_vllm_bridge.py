@@ -191,6 +191,23 @@ class PinnedPatchReview(unittest.TestCase):
     def tearDownClass(cls):
         cls.temporary.cleanup()
 
+    def test_apply_script_patches_a_root_inside_another_work_tree(self):
+        # A virtualenv's site-packages under a Git checkout (.envs/ here).
+        repo = Path(__file__).resolve().parents[1]
+        manifest = json.loads((repo / "vllm-patches/manifest.json").read_text())
+        with tempfile.TemporaryDirectory(prefix="exactsample-apply-") as directory:
+            outer = Path(directory)
+            subprocess.run(["git", "init", "-q", str(outer)], check=True)
+            root = outer / "env" / "site-packages"
+            for name, text in self.original.items():
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).write_text(text)
+            for arguments in (["--check"], [], ["--reverse"], []):
+                subprocess.run([sys.executable, str(repo / "vllm-patches/apply.py"), "--root", str(root),
+                                *arguments], check=True, capture_output=True)
+            for name, record in manifest["files"].items():
+                self.assertEqual(hashlib.sha256((root / name).read_bytes()).hexdigest(), record["after_sha256"])
+
     def test_grammar_mapping_matches_pinned_native_layout(self):
         source = (self.source / "vllm/v1/worker/gpu/structured_outputs.py").read_text()
         native = extracted_function(source, "_build_grammar_mapping", globals_={"np": np})

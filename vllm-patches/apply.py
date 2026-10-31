@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 
@@ -25,15 +26,21 @@ def main(argv=None):
         path = args.root / relative
         if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != record[before]:
             parser.error(f"expected exact {manifest['version']} {'patched' if args.reverse else 'original'} source: {path}")
+    root = args.root.resolve()
+    # Inside an enclosing work tree (a virtualenv under a Git checkout), git
+    # apply resolves paths against that repository and silently skips every
+    # file outside it. Stopping discovery above --root makes it patch --root
+    # (a checkout's own .git at --root is still found).
+    environment = {**os.environ, "GIT_CEILING_DIRECTORIES": str(root.parent)}
     command = ["git", "apply", "--check"]
     if args.reverse:
         command.append("--reverse")
-    subprocess.run([*command, str(patch)], cwd=args.root.resolve(), check=True)
+    subprocess.run([*command, str(patch)], cwd=root, env=environment, check=True)
     if args.check:
         print("PASS: pinned source hashes and git apply --check")
         return
     command.remove("--check")
-    subprocess.run([*command, str(patch)], cwd=args.root.resolve(), check=True)
+    subprocess.run([*command, str(patch)], cwd=root, env=environment, check=True)
     for relative, record in manifest["files"].items():
         if hashlib.sha256((args.root / relative).read_bytes()).hexdigest() != record[after]:
             raise RuntimeError(f"post-application hash mismatch: {relative}")
