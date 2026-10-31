@@ -1,0 +1,15 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  cpu-tests:
+    # The NumPy FP64 reference, the exact laws, the statistical analysis and the
+    # bridge logic. CUDA tests skip without a GPU; they run with
+    # EXACTSAMPLE_REQUIRE_CUDA=1 on a machine that has one.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e '.[test]'
+      - run: python -m pytest -q
