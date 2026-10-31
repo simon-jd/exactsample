@@ -88,8 +88,8 @@ their alternatives and costs. In short:
 | Inputs that defeat FP32 (scores 1e-10 apart, a ratio test 1e-12 from the threshold, min-p and top-p boundaries on exact sums) are settled in FP64 | `tests/test_fused.py` |
 | Batch invariance: alone, permuted, next to other requests, and at different slice counts | `tests/test_fused.py` |
 | Exact probability laws (rational arithmetic, every branch enumerated) for the verification algorithms | `reference/exact.py`, `tests/exact/` |
-| A preregistered statistical plan (G-tests against exact laws), 2M draws per cell | `tests/stat/`, `tests/stat_plan.yaml`, `results/stat-cuda*.json` |
-| compute-sanitizer memcheck, racecheck, initcheck and synccheck | `tests/sanitizer/run.py` |
+| A preregistered statistical plan (G-tests against exact laws), 2M draws per cell, on small vocabularies (2 to 4 tokens, FP64 inputs) where the exact law is enumerable | `tests/stat/`, `tests/stat_plan.json`, `results/stat-cuda*.json` |
+| compute-sanitizer memcheck, racecheck, initcheck and synccheck over the CUDA tests (the full-vocabulary cases are skipped under the sanitizer, which would take hours) | `tests/sanitizer/run.py` |
 | Agreement on the captured Qwen3-8B logits | `bench/agreement.py`, `results/agreement.json` |
 
 `bench/agreement.py` runs six workloads from the captured logits (192
@@ -194,6 +194,7 @@ Per-kernel times for every cell and run are in `results/sampler/runs/`, and
 pip install -e '.[test]'                                     # NumPy reference and tests
 EXACTSAMPLE_PYTHON=python3 bash scripts/build_cuda.sh                # builds exactsample_cuda.so (PyTorch 2.13, CUDA 13, sm_89)
 python -m pytest -q                                          # CPU tests; CUDA tests run when a GPU is present
+# bench/requirements.txt pins the GPU environment the results were measured in
 ```
 
 ```python

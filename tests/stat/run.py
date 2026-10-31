@@ -110,7 +110,7 @@ def main():
     args = parser.parse_args()
     if args.output.exists():
         parser.error('refusing to overwrite existing evidence')
-    raw_plan = (Path(__file__).parents[1] / 'stat_plan.yaml').read_bytes()
+    raw_plan = (Path(__file__).parents[1] / 'stat_plan.json').read_bytes()
     plan = json.loads(raw_plan)
     samples = plan['samples_per_cell'] if args.smoke is None else args.smoke
     if samples <= 0 or args.batch_size <= 0:
