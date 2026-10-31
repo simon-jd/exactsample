@@ -374,34 +374,70 @@ class PinnedPatchReview(unittest.TestCase):
 @unittest.skipUnless(importlib.util.find_spec("torch"), "optional PyTorch CPU dependency missing")
 class BridgeCpuCallReview(unittest.TestCase):
     """Run the bridge with actual CPU tensors and mocked vLLM/CUDA boundaries."""
+    @staticmethod
+    def bridge_state(runner, max_draft, requests=3, depth=3):
+        """The CPU equivalent of initialize_runner's buffers, with logging events."""
+        import torch
+        from exactsample.vllm_bridge import _STAGED_FIELDS
+        state = runner._exactsample_bridge
+        words = requests * (len(_STAGED_FIELDS) + max_draft)
+        log = []
+
+        class Event:
+            def __init__(self, slot):
+                self.slot = slot
+            def synchronize(self):
+                log.append(("synchronize", self.slot))
+            def record(self):
+                log.append(("record", self.slot))
+        staging = [torch.full((words,), -7, dtype=torch.int64) for _ in range(depth)]
+        state.update(plan=NS(max_draft=max_draft), step=0,
+                     drafts=torch.empty((requests, max_draft), dtype=torch.int64),
+                     offsets=torch.empty(requests + 1, dtype=torch.int64),
+                     mask=torch.empty((requests * (max_draft + 1), 1), dtype=torch.int32),
+                     staging=staging, staging_np=[slot.numpy() for slot in staging],
+                     staging_events=[Event(slot) for slot in range(depth)], staging_next=0,
+                     staged=torch.empty(words, dtype=torch.int64),
+                     streams=torch.zeros(requests, dtype=torch.int64), kind=torch.zeros(requests, dtype=torch.int64))
+        sampling = runner.sampler.sampling_states
+        # vLLM keeps these as float32/int32 host arrays.
+        for name, value, dtype in (("temperature", .6, np.float32), ("top_p", .95, np.float32),
+                                   ("min_p", .1, np.float32), ("top_k", 20, np.int32)):
+            setattr(sampling, name, NS(np=np.full(32, value, dtype)))
+        runner.sampler.req_states = NS(prefill_len=NS(gpu=torch.zeros(32, dtype=torch.int64)))
+        return state, log
+
+    @staticmethod
+    def no_host_sync():
+        """Patch every tensor-to-host read that would wait for the device."""
+        from contextlib import ExitStack
+        stack = ExitStack()
+        for name in ("cpu", "item", "tolist", "__bool__"):
+            stack.enter_context(patch(f"torch.Tensor.{name}", side_effect=AssertionError(f"Tensor.{name} syncs")))
+        return stack
+
     def exercise(self, *, placeholders=False, error=False):
         import torch
         from exactsample.vllm_bridge import try_sample
         runner = runner_fixture()
-        state = runner._exactsample_bridge
-        state.update(plan=NS(max_draft=2), step=0, drafts=torch.empty((3, 2), dtype=torch.int64),
-                     offsets=torch.empty(4, dtype=torch.int64), mask=torch.empty((6, 1), dtype=torch.int32))
-        for key in ("temperature", "top_p", "min_p"):
-            state[key] = torch.empty(3, dtype=torch.float64)
-        for key in ("top_k", "seeds", "streams", "kind"):
-            state[key] = torch.zeros(3, dtype=torch.int64)
+        state, log = self.bridge_state(runner, max_draft=2)
         state["out"] = NS(tokens=torch.tensor([[11, 8, -1], [7, -1, -1], [9, -1, -1]]),
                           accepted_len=torch.tensor([0 if error else 1, 0, 0], dtype=torch.int32),
                           status=torch.tensor([1 if error else 0, 0, 0], dtype=torch.int32),
                           path_used=torch.ones(3, dtype=torch.int32))
         sampling = runner.sampler.sampling_states
-        for name, value in (("temperature", .6), ("top_p", .95), ("min_p", .1), ("top_k", 20)):
-            setattr(sampling, name, NS(np=np.full(32, value)))
-        runner.sampler.req_states = NS(prefill_len=NS(gpu=torch.zeros(32, dtype=torch.int64)))
         for request, slot in (("a", 7), ("b", 3), ("c", 1)):
             register_request(runner, request, slot, NS())
         # Native slot seeds change after admission; exactsample must use cached identities.
         sampling.seeds.np[:] = 999
+        # A step that starts inside request a's prefill: vLLM marks it
+        # prefilling on the host and writes -1 into its draft rows.
         batch = NS(num_reqs=3, req_ids=["a", "b", "c"], idx_mapping_np=np.array([7, 3, 1]),
                    cu_num_logits_np=np.array([0, 3, 4, 6]), cu_num_logits=torch.tensor([0, 3, 4, 6]),
+                   is_prefilling_np=np.array([placeholders, False, False]),
                    input_ids=None, positions=None, logits_indices=None, expanded_idx_mapping=None,
                    expanded_local_pos=None, idx_mapping=torch.tensor([7, 3, 1]), seq_lens=torch.tensor([15, 6, 30]))
-        gathered = torch.tensor([100, -1 if placeholders else 11, 12, 200, 300, 31])
+        gathered = torch.tensor([100, -1 if placeholders else 11, -1 if placeholders else 12, 200, 300, 31])
         positions = torch.tensor([12, 13, 14, 5, 28, 29])
         grammar = NS(structured_output_request_ids=["c", "a"],
                      grammar_bitmask=np.array([[10], [11], [12], [13], [14]], np.int32))
@@ -416,16 +452,21 @@ class BridgeCpuCallReview(unittest.TestCase):
         }
         logits = torch.arange(6 * 32, dtype=torch.float32).reshape(6, 32)
         with patch.dict(sys.modules, modules), patch("exactsample.cuda.verify", side_effect=verify), \
-             patch("torch.cuda.is_current_stream_capturing", return_value=False), \
-             patch("torch.Tensor.cpu", side_effect=AssertionError("synchronous D2H is forbidden")), \
+             patch("torch.cuda.is_current_stream_capturing", return_value=False), self.no_host_sync(), \
              patch.dict(os.environ, {"EXACTSAMPLE_TRACE_PATH": "", "EXACTSAMPLE_CAPTURE_DIR": "", "EXACTSAMPLE_MODE": "coupled"}):
             result = try_sample(runner, logits, batch, grammar)
         if placeholders:
             self.assertIsNone(result)
             self.assertFalse(captured)
+            self.assertEqual(log, [])
             return
+        self.assertEqual(log, [("synchronize", 0), ("record", 0)])
         torch.testing.assert_close(captured["drafts"], torch.tensor([[11, 12], [-1, -1], [31, -1]]))
         torch.testing.assert_close(captured["rng"].seed, torch.tensor([107, 103, 101]))
+        params = captured["params"]
+        for name, value in (("temperature", .6), ("top_p", .95), ("min_p", .1)):
+            torch.testing.assert_close(getattr(params, name), torch.full((3,), float(np.float32(value)), dtype=torch.float64))
+        torch.testing.assert_close(params.top_k, torch.full((3,), 20, dtype=torch.int64))
         torch.testing.assert_close(captured["rng"].positions, positions)
         torch.testing.assert_close(captured["logits"], logits)
         torch.testing.assert_close(captured["mask"], torch.tensor([[12], [13], [14], [-1], [10], [11]], dtype=torch.int32))
@@ -448,6 +489,48 @@ class BridgeCpuCallReview(unittest.TestCase):
 
     def test_non_ok_status_zeroes_only_failed_request_without_host_status_read(self):
         self.exercise(error=True)
+
+    def test_ordinary_steps_rotate_pinned_slots_and_wait_before_reuse(self):
+        import torch
+        from exactsample.vllm_bridge import try_sample
+        runner = runner_fixture()
+        state, log = self.bridge_state(runner, max_draft=0)
+        state["out"] = NS(tokens=torch.tensor([[5], [6], [7]]), accepted_len=torch.zeros(3, dtype=torch.int32),
+                          status=torch.zeros(3, dtype=torch.int32), path_used=torch.ones(3, dtype=torch.int32))
+        for request, slot in (("a", 4), ("b", 9), ("c", 2)):
+            register_request(runner, request, slot, NS())
+        temperature = runner.sampler.sampling_states.temperature.np
+        batch = NS(num_reqs=3, req_ids=["c", "a", "b"], idx_mapping_np=np.array([2, 4, 9]),
+                   cu_num_logits_np=np.arange(4), cu_num_logits=torch.arange(4),
+                   is_prefilling_np=np.zeros(3, bool), input_ids=None, positions=None, logits_indices=None,
+                   expanded_idx_mapping=None, expanded_local_pos=None, idx_mapping=torch.tensor([2, 4, 9]),
+                   seq_lens=torch.tensor([3, 4, 5]))
+        positions = torch.tensor([2, 3, 4])
+        calls = []
+        def verify(logits, offsets, drafts, **kwargs):
+            calls.append({"drafts": drafts.clone(), "temperature": kwargs["params"].temperature.clone(),
+                          "seed": kwargs["rng"].seed.clone(), "mask": kwargs["mask"]})
+            return state["out"]
+        modules = {
+            "vllm.v1.worker.gpu.input_batch": NS(get_num_sampled_and_rejected=lambda count, *args: (count, count - 1)),
+            "vllm.v1.worker.gpu.sample.output": NS(SamplerOutput=NS),
+            "vllm.v1.worker.gpu.spec_decode.rejection_sampler": NS(gather_draft_sampled=lambda *args: (positions, positions)),
+        }
+        logits = torch.zeros((3, 32))
+        with patch.dict(sys.modules, modules), patch("exactsample.cuda.verify", side_effect=verify), \
+             patch("torch.cuda.is_current_stream_capturing", return_value=False), self.no_host_sync(), \
+             patch.dict(os.environ, {"EXACTSAMPLE_TRACE_PATH": "", "EXACTSAMPLE_CAPTURE_DIR": ""}):
+            for step in range(4):
+                temperature[[2, 4, 9]] = [step + .25, step + .5, step + .75]
+                try_sample(runner, logits, batch, None)
+        expected = [(action, step % 3) for step in range(4) for action in ("synchronize", "record")]
+        self.assertEqual(log, expected)
+        for step, call in enumerate(calls):
+            self.assertEqual(tuple(call["drafts"].shape), (3, 0))
+            self.assertIsNone(call["mask"])
+            torch.testing.assert_close(call["temperature"], torch.tensor([step + .25, step + .5, step + .75],
+                                                                         dtype=torch.float64))
+            torch.testing.assert_close(call["seed"], torch.tensor([102, 104, 109]))
 
 
 if __name__ == "__main__":

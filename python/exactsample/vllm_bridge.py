@@ -18,6 +18,12 @@ class ExactSampleDecodeError(RuntimeError):
     """Malformed bridge metadata: the step cannot safely be submitted."""
 
 
+# Host staging of per-step parameters (see initialize_runner).
+_STAGED_FIELDS = ("temperature", "top_k", "top_p", "min_p", "seeds")
+_STAGED_FLOATS = ("temperature", "top_p", "min_p")
+_STAGING_DEPTH = 3
+
+
 def unsupported_request(params):
     """Return a reason for whole-batch fallback, without inspecting GPU data."""
     defaults = {"n": 1, "presence_penalty": 0.0, "frequency_penalty": 0.0,
@@ -56,16 +62,20 @@ def initialize_runner(runner):
     max_requests = int(runner.max_num_reqs)
     max_rows = max_requests * (max_draft + 1)
     workspace = plan(max_rows, max_requests, max_draft, int(runner.vocab_size), device=runner.device)
+    # Per-step parameters and draft indices: 8-byte words packed as
+    # [temperature, top_k, top_p, min_p, seed] x R, then R x D draft indices.
+    staged_words = max_requests * (len(_STAGED_FIELDS) + max_draft)
+    staging = [torch.empty(staged_words, dtype=torch.int64, pin_memory=True) for _ in range(_STAGING_DEPTH)]
     runner._exactsample_bridge = {
         "plan": workspace, "out": workspace.allocate_output(), "requests": {}, "request_seeds": {}, "step": 0,
         "drafts": torch.empty((max_requests, max_draft), device=runner.device, dtype=torch.int64),
         "offsets": torch.empty(max_requests + 1, device=runner.device, dtype=torch.int64),
         "mask": torch.empty((max_rows, (runner.vocab_size + 31) // 32), device=runner.device, dtype=torch.int32),
-        "temperature": torch.empty(max_requests, device=runner.device, dtype=torch.float64),
-        "top_k": torch.empty(max_requests, device=runner.device, dtype=torch.int64),
-        "top_p": torch.empty(max_requests, device=runner.device, dtype=torch.float64),
-        "min_p": torch.empty(max_requests, device=runner.device, dtype=torch.float64),
-        "seeds": torch.empty(max_requests, device=runner.device, dtype=torch.int64),
+        # Pinned host slots, each reused only after the event recorded behind
+        # its last non-blocking copy, so the host can run ahead of the GPU.
+        "staging": staging, "staging_np": [slot.numpy() for slot in staging],
+        "staging_events": [torch.cuda.Event() for _ in staging], "staging_next": 0,
+        "staged": torch.empty(staged_words, device=runner.device, dtype=torch.int64),
         "streams": torch.zeros(max_requests, device=runner.device, dtype=torch.int64),
         "kind": torch.zeros(max_requests, device=runner.device, dtype=torch.int64),
         "provenance": {
@@ -104,17 +114,25 @@ def finish_requests(runner, request_ids):
             del state["requests"][slot]
 
 
-def grammar_mask_rows(req_ids, offsets, grammar_req_ids, bitmask, vocab):
+def grammar_mask_rows(req_ids, offsets, grammar_req_ids, bitmask, vocab, out=None):
     """Convert vLLM's constrained-request rows to dense exactsample packed rows.
 
     Adaptive verification is excluded before this function: offsets are the
     authoritative CPU layout, and each constrained request supplies D+1 masks.
+    ``out`` (int32 [rows, words], e.g. pinned memory) receives the result.
     """
     words = (vocab + 31) // 32
     bitmask = np.asarray(bitmask)
     if bitmask.ndim != 2 or bitmask.shape[1] != words or bitmask.dtype != np.int32:
         raise ValueError("vLLM grammar bitmask has unexpected shape/dtype")
-    result = np.full((int(offsets[-1]), words), -1, dtype=np.int32)
+    shape = (int(offsets[-1]), words)
+    if out is None:
+        result = np.full(shape, -1, dtype=np.int32)
+    elif out.shape != shape or out.dtype != np.int32:
+        raise ValueError("grammar mask output has unexpected shape/dtype")
+    else:
+        result = out
+        result.fill(-1)
     index_by_id = {request: index for index, request in enumerate(req_ids)}
     if len(index_by_id) != len(req_ids) or len(set(grammar_req_ids)) != len(grammar_req_ids):
         raise ValueError("duplicate request identity in grammar mapping")
@@ -227,47 +245,75 @@ def try_sample(runner, logits, batch, grammar_output):
     if offsets_np.shape != (requests + 1,) or offsets_np[0] != 0 or offsets_np[-1] != rows:
         raise ExactSampleDecodeError("vLLM ragged metadata does not describe its raw logits")
     counts = np.diff(offsets_np) - 1
-    if np.any(counts < 0) or np.any(counts > state["plan"].max_draft):
+    max_draft = state["plan"].max_draft
+    if np.any(counts < 0) or np.any(counts > max_draft):
         raise ExactSampleDecodeError("vLLM supplied invalid draft capacities")
+    # vLLM writes -1 placeholders into the draft rows of a request whose step
+    # starts inside its prefill (gather_draft_sampled: position of the first
+    # logits row < prefill_len), which is exactly the host's is_prefilling.
+    # Those batches keep vLLM's native handling. Deciding from host metadata
+    # avoids a device->host sync; a negative draft that reached the kernel
+    # anyway would be reported as INVALID_INPUT, never sampled as a token.
+    if np.any((counts > 0) & np.asarray(batch.is_prefilling_np[:requests], dtype=bool)):
+        _trace({"event": "fallback", "reason": "prefill_draft_placeholders", "requests": list(batch.req_ids)})
+        return None
     gathered, positions = gather_draft_sampled(
         batch.input_ids, batch.positions, batch.logits_indices, batch.expanded_idx_mapping,
         batch.expanded_local_pos, runner.sampler.req_states.prefill_len.gpu)
-    drafts = state["drafts"][:requests]
-    drafts.fill_(-1)
-    for request, count in enumerate(counts):
-        start = int(offsets_np[request])
-        drafts[request, :int(count)].copy_(gathered[start + 1:start + 1 + int(count)])
-    # vLLM uses -1 draft placeholders for incomplete prefill; those retain
-    # its native handling rather than being mistaken for actual proposal IDs.
-    for request, count in enumerate(counts):
-        if count and bool((drafts[request, :int(count)] < 0).any().item()):
-            _trace({"event": "fallback", "reason": "prefill_draft_placeholders", "requests": list(batch.req_ids)})
-            return None
+
+    # Stage this step's parameters and draft-row indices in one pinned slot.
+    slot = state["staging_next"]
+    state["staging_next"] = (slot + 1) % len(state["staging"])
+    state["staging_events"][slot].synchronize()  # its previous copy has executed
+    fields = len(_STAGED_FIELDS)
+    words = requests * (fields + max_draft)
+    host = state["staging_np"][slot][:words]
+    params_np = {}
+    for index, name in enumerate(_STAGED_FIELDS):
+        view = host[index * requests:(index + 1) * requests]
+        params_np[name] = view.view(np.float64) if name in _STAGED_FLOATS else view
     slots = batch.idx_mapping_np
     sampling = runner.sampler.sampling_states
-    params_np = {
-        "temperature": sampling.temperature.np[slots].astype(np.float64),
-        "top_k": sampling.top_k.np[slots].astype(np.int64),
-        "top_p": sampling.top_p.np[slots].astype(np.float64),
-        "min_p": sampling.min_p.np[slots].astype(np.float64),
-        "seeds": np.array([state["request_seeds"][str(request)] for request in batch.req_ids], dtype=np.int64),
-    }
+    for name in ("temperature", "top_k", "top_p", "min_p"):
+        params_np[name][:] = getattr(sampling, name).np[slots]
+    params_np["seeds"][:] = [state["request_seeds"][str(request)] for request in batch.req_ids]
     params_np["top_k"][params_np["top_k"] == logits.shape[1]] = 0
-    for name, values in params_np.items():
-        state[name][:requests].copy_(torch.from_numpy(values))
+    draft_index = host[fields * requests:].reshape(requests, max_draft)
+    has_drafts = rows > requests
+    if has_drafts:
+        # Request r's proposals are the gathered rows offsets[r]+1 .. +counts[r].
+        np.add(offsets_np[:-1, None] + 1, np.arange(max_draft), out=draft_index)
+        draft_index[np.arange(max_draft) >= counts[:, None]] = -1
+    staged = state["staged"][:words]
+    staged.copy_(state["staging"][slot][:words], non_blocking=True)
+    state["staging_events"][slot].record()
+    device = {name: staged[index * requests:(index + 1) * requests]
+              for index, name in enumerate(_STAGED_FIELDS)}
+    for name in _STAGED_FLOATS:
+        device[name] = device[name].view(torch.float64)
+
+    drafts = state["drafts"][:requests]
+    if has_drafts:
+        index = staged[fields * requests:].view(requests, max_draft)
+        drafts.copy_(gathered[index.clamp(min=0)]).masked_fill_(index < 0, -1)
+    elif max_draft:
+        drafts.fill_(-1)
     offsets = state["offsets"][:requests + 1]
     offsets.copy_(batch.cu_num_logits)
     mask_np = None
     mask = None
     if grammar_output is not None and grammar_output.structured_output_request_ids:
+        # The caching host allocator keeps this block until its copy completes.
+        host_mask = torch.empty((rows, (logits.shape[1] + 31) // 32), dtype=torch.int32,
+                                pin_memory=logits.is_cuda)
         mask_np = grammar_mask_rows(batch.req_ids, offsets_np,
                                     grammar_output.structured_output_request_ids,
-                                    grammar_output.grammar_bitmask, logits.shape[1])
+                                    grammar_output.grammar_bitmask, logits.shape[1], out=host_mask.numpy())
         mask = state["mask"][:rows]
-        mask.copy_(torch.from_numpy(mask_np))
-    params = CudaRequestParams(state["temperature"][:requests], state["top_k"][:requests],
-                               state["top_p"][:requests], state["min_p"][:requests], state["kind"][:requests])
-    rng = CudaRngKey(state["seeds"][:requests], state["streams"][:requests], positions.to(torch.int64))
+        mask.copy_(host_mask, non_blocking=True)
+    params = CudaRequestParams(device["temperature"], device["top_k"], device["top_p"], device["min_p"],
+                               state["kind"][:requests])
+    rng = CudaRngKey(device["seeds"], state["streams"][:requests], positions.to(torch.int64))
     mode = os.environ.get("EXACTSAMPLE_MODE", "coupled")
     out = verify(logits, offsets, drafts, params=params, rng=rng, mask=mask,
                  mode=mode, plan=state["plan"], out=state["out"],
@@ -286,12 +332,15 @@ def try_sample(runner, logits, batch, grammar_output):
                            num_sampled=num_sampled, num_rejected=num_rejected)
     # All cross-stream copies use snapshots, never the reusable plan output.
     result.exactsample_status = out.status[:requests].clone()
-    record = {"event": "verify", "step": state["step"], "requests": list(batch.req_ids),
-              "mode": mode, "draft_counts": counts.tolist(),
-              "seeds_uint64": params_np["seeds"].view(np.uint64).tolist(),
-              "stream_ids": [0] * requests,
-              "grammar_rows": 0 if mask_np is None else int(grammar_output.grammar_bitmask.shape[0]),
-              "raw_logits_dtype": str(logits.dtype)}
-    result.exactsample_diagnostics = _diagnostics(state, logits, batch, positions, params_np, mask_np, record, out)
+    result.exactsample_diagnostics = None
+    if os.environ.get("EXACTSAMPLE_TRACE_PATH") or os.environ.get("EXACTSAMPLE_CAPTURE_DIR"):
+        record = {"event": "verify", "step": state["step"], "requests": list(batch.req_ids),
+                  "mode": mode, "draft_counts": counts.tolist(),
+                  "seeds_uint64": params_np["seeds"].view(np.uint64).tolist(),
+                  "stream_ids": [0] * requests,
+                  "grammar_rows": 0 if mask_np is None else int(grammar_output.grammar_bitmask.shape[0]),
+                  "raw_logits_dtype": str(logits.dtype)}
+        result.exactsample_diagnostics = _diagnostics(state, logits, batch, positions, params_np, mask_np,
+                                                      record, out)
     state["step"] += 1
     return result
