@@ -1,11 +1,15 @@
 """End-to-end vLLM 0.31 decoding with exactsample on or off.
 
 ``run`` starts one engine (one arm) and serves the same seeded requests at
-each setting and concurrency: all requests of a cell are admitted together,
-each generates exactly --output-len tokens (ignore_eos), and the frontend
-timestamps every output. Per cell it records wall time, output throughput,
-TPOT ((last token - first token) / (tokens - 1), per request), TTFT and a
-hash of every request's tokens, with the GPU state before and after.
+each setting and concurrency. The prompts are the 32 chat prompts of
+bench/capture_logits.py (request i uses prompt i mod 32, with seed
+--seed-base + i). The scheduler is paused while a cell's requests are added
+and resumed once they all are, so every cell starts from an idle engine with
+the same batch; each request generates exactly --output-len tokens
+(ignore_eos), and the frontend timestamps every output. Per cell it records
+wall time, output throughput, TPOT ((last token - first token) / (tokens - 1),
+per request), TTFT, wall time per engine step and a hash of every request's
+tokens, with the GPU state before and after.
 
 ``--profile`` also wraps the runner's ``sample`` (logits plus sampling) in
 CUDA events and host timers to split each step into its logits and sampling
@@ -34,9 +38,6 @@ SETTINGS = {
     "topk_topp": {"temperature": 0.6, "top_k": 20, "top_p": 0.95},
     "temp_only": {"temperature": 1.0},
 }
-TEXT = ("The river bends past the old mill, where the water slows and the light falls through the "
-        "willows onto stones that have not moved in a hundred years. Children come in summer to "
-        "count the fish, and in winter the ice holds the leaves where they fell. ")
 
 
 # --- worker side (loaded through worker_extension_cls) -----------------------
@@ -167,11 +168,13 @@ def gpu_state():
         return {"error": str(error)} | load
 
 
-def prompts(tokenizer, count, length):
-    stream = tokenizer.encode(TEXT * 40, add_special_tokens=False)
-    if len(stream) < length + 13 * count:
-        raise ValueError("prompt text too short")
-    return [stream[13 * index:13 * index + length] for index in range(count)]
+def chat_prompts(tokenizer, count):
+    """Token IDs of the logit-capture prompts in Qwen3's chat template, without thinking."""
+    from bench.capture_logits import PROMPTS
+    texts = [tokenizer.apply_chat_template([{"role": "user", "content": PROMPTS[index % len(PROMPTS)]}],
+                                           tokenize=False, add_generation_prompt=True, enable_thinking=False)
+             for index in range(count)]
+    return [tokenizer.encode(text, add_special_tokens=False) for text in texts]
 
 
 def sampling_params(setting, seed, max_tokens):
@@ -182,11 +185,15 @@ def sampling_params(setting, seed, max_tokens):
 
 
 def serve(engine, tag, token_prompts, setting, seed_base, max_tokens):
-    """Admit every request at once and timestamp each output on arrival."""
-    began = time.perf_counter()
+    """Admit every request into an idle, paused scheduler; timestamp each output."""
+    # "keep" stops stepping, queues new requests and waits for an idle device;
+    # resuming admits all of them to the same first step.
+    engine.engine_core.call_utility("pause_scheduler", "keep", False)
     for index, prompt in enumerate(token_prompts):
         engine.add_request(f"{tag}-{index}", {"prompt_token_ids": prompt},
                            sampling_params(setting, seed_base + index, max_tokens))
+    began = time.perf_counter()
+    engine.engine_core.call_utility("resume_scheduler")
     arrivals = defaultdict(list)  # request -> [(time, tokens in this output)]
     tokens = defaultdict(list)
     frontend_steps = 0
@@ -211,6 +218,7 @@ def serve(engine, tag, token_prompts, setting, seed_base, max_tokens):
     digests = [hashlib.sha256(json.dumps(tokens[key]).encode()).hexdigest()[:16] for key in order]
     return {"wall_s": ended - began, "output_tokens": max_tokens * len(order),
             "throughput_tok_s": max_tokens * len(order) / (ended - began),
+            "ms_per_engine_step": (ended - began) * 1e3 / frontend_steps,
             "tpot_ms": summary(tpot), "ttft_ms": summary(ttft),
             "decode_tokens_per_output": summary(per_output), "frontend_steps": frontend_steps,
             "token_sha256_16": digests, "first_tokens": [tokens[key][:8] for key in order]}
@@ -299,7 +307,8 @@ def run(args):
               "label": args.label, "arm": args.arm, "rep": args.rep, "exactsample": args.exactsample,
               "mode": args.mode, "profile": args.profile, "target": model_label(args.target),
               "draft": model_label(args.draft),
-              "prompt_len": args.prompt_len, "output_len": args.output_len, "warmup_len": args.warmup_len,
+              "prompts": "bench/capture_logits.py PROMPTS, chat template without thinking; request i uses i mod 32",
+              "output_len": args.output_len, "warmup_len": args.warmup_len,
               "seed_base": args.seed_base, "provenance": provenance(args), "gpu_start": gpu_state()}
     speculative = None if args.draft is None else {
         "model": str(args.draft), "method": "draft_model", "num_speculative_tokens": args.num_speculative_tokens,
@@ -319,7 +328,9 @@ def run(args):
     config = llm.llm_engine.vllm_config
     blocks = config.cache_config.num_gpu_blocks
     capacity = None if blocks is None else blocks * config.cache_config.block_size
-    needed = max(concurrencies) * (args.prompt_len + args.output_len + args.num_speculative_tokens + 1)
+    token_prompts = chat_prompts(llm.get_tokenizer(), max(concurrencies))
+    record["prompt_tokens"] = [len(prompt) for prompt in token_prompts]
+    needed = max(concurrencies) * (max(record["prompt_tokens"]) + args.output_len + args.num_speculative_tokens + 1)
     record["engine"] = {"async_scheduling": config.scheduler_config.async_scheduling,
                         "cudagraph_mode": str(config.compilation_config.cudagraph_mode),
                         "compilation_mode": str(config.compilation_config.mode),
@@ -327,7 +338,6 @@ def run(args):
     if capacity is not None and capacity < needed:
         raise SystemExit(f"KV cache holds {capacity} tokens, the largest cell needs {needed}: it would preempt")
     engine = llm.llm_engine
-    token_prompts = prompts(llm.get_tokenizer(), max(concurrencies), args.prompt_len)
     if args.profile:
         record["timing_hooks"] = llm.collective_rpc("e2e_install_timing")[0]
     record["cells"] = []
@@ -375,6 +385,7 @@ def summarize(args):
             key = (model, draft, cell["setting"], cell["concurrency"])
             entry = {"arm": record["arm"], "rep": record["rep"], "file": str(path.relative_to(args.runs)),
                      "throughput": cell["throughput_tok_s"], "tpot": cell["tpot_ms"]["median"],
+                     "step_ms": cell["ms_per_engine_step"],
                      "ttft": cell["ttft_ms"]["median"], "tokens_per_output": cell["decode_tokens_per_output"]["median"],
                      "exactsample_steps": cell["exactsample_steps"], "frontend_steps": cell["frontend_steps"],
                      "digests": cell["token_sha256_16"],
@@ -392,9 +403,11 @@ def summarize(args):
             row["arms"][arm] = {
                 "reps": len(entries), "throughput_tok_s": spread([e["throughput"] for e in entries]),
                 "tpot_ms": spread([e["tpot"] for e in entries]), "ttft_ms": spread([e["ttft"] for e in entries]),
+                "ms_per_engine_step": spread([e["step_ms"] for e in entries]),
                 "decode_tokens_per_output": spread([e["tokens_per_output"] for e in entries]),
                 "exactsample_steps": sorted({e["exactsample_steps"] for e in entries}, key=str),
-                "identical_tokens_across_reps": len({tuple(e["digests"]) for e in entries}) == 1,
+                "requests_with_differing_tokens_across_reps": sum(
+                    len({e["digests"][index] for e in entries}) > 1 for index in range(len(entries[0]["digests"]))),
                 "sm_clock_mhz": [min((c for e in entries for c in e["sm_clock"] if c), default=None),
                                  max((c for e in entries for c in e["sm_clock"] if c), default=None)],
                 "files": sorted(e["file"] for e in entries)}
@@ -405,6 +418,8 @@ def summarize(args):
                     row["arms"][arm]["throughput_vs_off"] = (row["arms"][arm]["throughput_tok_s"]["median"]
                                                              / off["throughput_tok_s"]["median"])
                     row["arms"][arm]["tpot_vs_off"] = row["arms"][arm]["tpot_ms"]["median"] / off["tpot_ms"]["median"]
+                    row["arms"][arm]["step_vs_off"] = (row["arms"][arm]["ms_per_engine_step"]["median"]
+                                                       / off["ms_per_engine_step"]["median"])
         cells.append(row)
     profiled = []
     for key in sorted(profiles, key=str):
@@ -454,7 +469,6 @@ def main(argv=None):
     one.add_argument("--label", default="")
     one.add_argument("--settings", nargs="+", choices=sorted(SETTINGS), default=["topk_topp", "temp_only"])
     one.add_argument("--concurrency", type=int, nargs="+", default=[1, 16, 64])
-    one.add_argument("--prompt-len", type=int, default=128)
     one.add_argument("--output-len", type=int, default=256)
     one.add_argument("--warmup-len", type=int, default=16)
     one.add_argument("--seed-base", type=int, default=1000)
