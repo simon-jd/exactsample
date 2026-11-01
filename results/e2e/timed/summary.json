@@ -1,0 +1,2550 @@
+{
+ "schema": "exactsample.vllm_e2e_summary.v1",
+ "runs_dir": "results/e2e/timed",
+ "timed": [
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": "Qwen/Qwen3-0.6B@c1899de289a0",
+   "setting": "temp_only",
+   "concurrency": 1,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 131.47044870718918,
+      "min": 89.98260021186275,
+      "max": 132.72664447203522,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 7.478623968713424,
+      "min": 7.406672066552382,
+      "max": 10.714008478338227,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 40.34428903833032,
+      "min": 40.02878908067942,
+      "max": 112.91805887594819,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 19.869445366974997,
+      "min": 19.681390336885745,
+      "max": 29.030555816443297,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.6288659793814433,
+      "min": 2.6288659793814433,
+      "max": 2.6288659793814433,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-off.json",
+      "qwen3-1.7b-spec/rep2-off.json",
+      "qwen3-1.7b-spec/rep3-off.json",
+      "qwen3-1.7b-spec/rep4-off.json",
+      "qwen3-1.7b-spec/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 111.15465319293467,
+      "min": 107.33533778318413,
+      "max": 116.39038435867847,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 8.832066054182018,
+      "min": 8.434575623558725,
+      "max": 9.152002478310584,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 48.6748639959842,
+      "min": 47.68338007852435,
+      "max": 51.28545197658241,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 25.589971834172804,
+      "min": 24.43882679928922,
+      "max": 26.500540299134123,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.865168539325843,
+      "min": 2.8333333333333335,
+      "max": 2.865168539325843,
+      "n": 5
+     },
+     "exactsample_steps": [
+      90,
+      91
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-old.json",
+      "qwen3-1.7b-spec/rep2-old.json",
+      "qwen3-1.7b-spec/rep3-old.json",
+      "qwen3-1.7b-spec/rep4-old.json",
+      "qwen3-1.7b-spec/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.8454725323140729,
+     "tpot_vs_off": 1.180974747644844,
+     "step_vs_off": 1.2879056944742853
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 132.2723126971213,
+      "min": 119.58743234361853,
+      "max": 144.16014146008297,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 7.431296466429736,
+      "min": 6.664771101820995,
+      "max": 8.224294270735745,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 42.476570000872016,
+      "min": 40.418040938675404,
+      "max": 76.28463883884251,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 21.504458389244974,
+      "min": 19.731143543807168,
+      "max": 23.78547970050325,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.865168539325843,
+      "min": 2.865168539325843,
+      "max": 2.865168539325843,
+      "n": 5
+     },
+     "exactsample_steps": [
+      90
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-on.json",
+      "qwen3-1.7b-spec/rep2-on.json",
+      "qwen3-1.7b-spec/rep3-on.json",
+      "qwen3-1.7b-spec/rep4-on.json",
+      "qwen3-1.7b-spec/rep5-on.json"
+     ],
+     "throughput_vs_off": 1.0060991956581666,
+     "tpot_vs_off": 0.993671629636457,
+     "step_vs_off": 1.0822878038149737
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": "Qwen/Qwen3-0.6B@c1899de289a0",
+   "setting": "temp_only",
+   "concurrency": 16,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 1656.5517010000156,
+      "min": 1608.5057325067808,
+      "max": 1764.1403359907142,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 7.385250987649402,
+      "min": 6.995257002520649,
+      "max": 8.079056618004746,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 49.64366485364735,
+      "min": 42.80610498972237,
+      "max": 63.36638890206814,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 21.500923444071542,
+      "min": 20.18965871235275,
+      "max": 22.14315472089726,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.8836570406337847,
+      "min": 2.756837307152875,
+      "max": 2.8836570406337847,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 7,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-off.json",
+      "qwen3-1.7b-spec/rep2-off.json",
+      "qwen3-1.7b-spec/rep3-off.json",
+      "qwen3-1.7b-spec/rep4-off.json",
+      "qwen3-1.7b-spec/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 1331.8754266000822,
+      "min": 1195.120230351961,
+      "max": 1432.220827384022,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 9.744909954458183,
+      "min": 9.043248595815957,
+      "max": 11.117134392078892,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 60.4272501077503,
+      "min": 55.820170091465116,
+      "max": 135.40061190724373,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 27.775980175011657,
+      "min": 25.76481237764227,
+      "max": 30.876308478213645,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.865168539325843,
+      "min": 2.849250936329588,
+      "max": 2.865168539325843,
+      "n": 5
+     },
+     "exactsample_steps": [
+      103,
+      111
+     ],
+     "requests_with_differing_tokens_across_reps": 7,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-old.json",
+      "qwen3-1.7b-spec/rep2-old.json",
+      "qwen3-1.7b-spec/rep3-old.json",
+      "qwen3-1.7b-spec/rep4-old.json",
+      "qwen3-1.7b-spec/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.8040047441900334,
+     "tpot_vs_off": 1.3195096511621496,
+     "step_vs_off": 1.2918505685238528
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 1674.9535806539948,
+      "min": 1539.5000921183987,
+      "max": 1739.7289571194553,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 7.498602811977559,
+      "min": 7.389452368678415,
+      "max": 8.285768387620063,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 46.40443413518369,
+      "min": 42.38743591122329,
+      "max": 64.59825416095555,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 22.030999143565964,
+      "min": 21.21071834201077,
+      "max": 23.969404802129077,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.865168539325843,
+      "min": 2.865168539325843,
+      "max": 2.865168539325843,
+      "n": 5
+     },
+     "exactsample_steps": [
+      111
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-on.json",
+      "qwen3-1.7b-spec/rep2-on.json",
+      "qwen3-1.7b-spec/rep3-on.json",
+      "qwen3-1.7b-spec/rep4-on.json",
+      "qwen3-1.7b-spec/rep5-on.json"
+     ],
+     "throughput_vs_off": 1.0111085453251296,
+     "tpot_vs_off": 1.0153484051547765,
+     "step_vs_off": 1.0246536248023608
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": "Qwen/Qwen3-0.6B@c1899de289a0",
+   "setting": "temp_only",
+   "concurrency": 64,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 5080.878160658921,
+      "min": 4902.766686263146,
+      "max": 5246.539829941501,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 9.420552897248783,
+      "min": 9.378775121534572,
+      "max": 9.84176634080416,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 71.42827706411481,
+      "min": 70.72183699347079,
+      "max": 79.5446690171957,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 26.216580642281265,
+      "min": 25.468014943511868,
+      "max": 27.16899672295989,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.865168539325843,
+      "min": 2.865168539325843,
+      "max": 2.881447906026558,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 25,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-off.json",
+      "qwen3-1.7b-spec/rep2-off.json",
+      "qwen3-1.7b-spec/rep3-off.json",
+      "qwen3-1.7b-spec/rep4-off.json",
+      "qwen3-1.7b-spec/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 3756.0375233450827,
+      "min": 3322.4083379048416,
+      "max": 3886.2479180877835,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 12.123623274851079,
+      "min": 11.716785705557056,
+      "max": 14.293449404010294,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 89.13498208858073,
+      "min": 84.67630110681057,
+      "max": 92.64757903292775,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 31.839735394710825,
+      "min": 31.252661708021794,
+      "max": 35.99534696307931,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.8333333333333335,
+      "min": 2.8177655677655675,
+      "max": 2.8333333333333335,
+      "n": 5
+     },
+     "exactsample_steps": [
+      134,
+      138
+     ],
+     "requests_with_differing_tokens_across_reps": 14,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-old.json",
+      "qwen3-1.7b-spec/rep2-old.json",
+      "qwen3-1.7b-spec/rep3-old.json",
+      "qwen3-1.7b-spec/rep4-old.json",
+      "qwen3-1.7b-spec/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.7392496738906205,
+     "tpot_vs_off": 1.286933304985922,
+     "step_vs_off": 1.214488488379019
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 4515.012229996916,
+      "min": 4311.557272864167,
+      "max": 4767.184172113831,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 9.756295631329218,
+      "min": 9.568207636110339,
+      "max": 10.58525383910712,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 74.44781297817826,
+      "min": 71.98642496950924,
+      "max": 159.08189001493156,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 26.487467759526776,
+      "min": 25.08634794843349,
+      "max": 27.737365714376317,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.8333333333333335,
+      "min": 2.8333333333333335,
+      "max": 2.8333333333333335,
+      "n": 5
+     },
+     "exactsample_steps": [
+      138
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-on.json",
+      "qwen3-1.7b-spec/rep2-on.json",
+      "qwen3-1.7b-spec/rep3-on.json",
+      "qwen3-1.7b-spec/rep4-on.json",
+      "qwen3-1.7b-spec/rep5-on.json"
+     ],
+     "throughput_vs_off": 0.8886283211741847,
+     "tpot_vs_off": 1.0356393873844163,
+     "step_vs_off": 1.0103326639328636
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": "Qwen/Qwen3-0.6B@c1899de289a0",
+   "setting": "topk_topp",
+   "concurrency": 1,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 119.86434461604053,
+      "min": 117.60453506263799,
+      "max": 121.8232043337343,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 8.209484152714996,
+      "min": 8.05850249039484,
+      "max": 8.348039929371547,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 43.13238291069865,
+      "min": 40.90103507041931,
+      "max": 49.98421482741833,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 20.34045441874436,
+      "min": 20.01338949693101,
+      "max": 20.731302894031007,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.451923076923077,
+      "min": 2.451923076923077,
+      "max": 2.451923076923077,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 1,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-off.json",
+      "qwen3-1.7b-spec/rep2-off.json",
+      "qwen3-1.7b-spec/rep3-off.json",
+      "qwen3-1.7b-spec/rep4-off.json",
+      "qwen3-1.7b-spec/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 103.04918060557992,
+      "min": 80.63580881960296,
+      "max": 108.2447103776522,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 9.476112391726645,
+      "min": 9.078175078748782,
+      "max": 12.254032148413508,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 50.961958011612296,
+      "min": 49.98291307128966,
+      "max": 67.83670210279524,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 26.150007465070015,
+      "min": 24.894859367295314,
+      "max": 33.418612419872694,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.7127659574468086,
+      "min": 2.6842105263157894,
+      "max": 2.7127659574468086,
+      "n": 5
+     },
+     "exactsample_steps": [
+      96,
+      97
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-old.json",
+      "qwen3-1.7b-spec/rep2-old.json",
+      "qwen3-1.7b-spec/rep3-old.json",
+      "qwen3-1.7b-spec/rep4-old.json",
+      "qwen3-1.7b-spec/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.8597150465025747,
+     "tpot_vs_off": 1.1542884078280067,
+     "step_vs_off": 1.285615696027517
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 125.27217403736006,
+      "min": 122.9231736124157,
+      "max": 138.9364340643749,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 7.790303007498675,
+      "min": 7.067007717548631,
+      "max": 7.973700238610892,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 46.97851394303143,
+      "min": 40.47712706960738,
+      "max": 57.01922415755689,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 21.511056727582687,
+      "min": 19.395465705249656,
+      "max": 21.922122272907902,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.7127659574468086,
+      "min": 2.7127659574468086,
+      "max": 2.7127659574468086,
+      "n": 5
+     },
+     "exactsample_steps": [
+      96
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2790,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-on.json",
+      "qwen3-1.7b-spec/rep2-on.json",
+      "qwen3-1.7b-spec/rep3-on.json",
+      "qwen3-1.7b-spec/rep4-on.json",
+      "qwen3-1.7b-spec/rep5-on.json"
+     ],
+     "throughput_vs_off": 1.0451162473598161,
+     "tpot_vs_off": 0.948939405032204,
+     "step_vs_off": 1.0575504501885453
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": "Qwen/Qwen3-0.6B@c1899de289a0",
+   "setting": "topk_topp",
+   "concurrency": 16,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 1781.0679885020068,
+      "min": 1734.3609729214184,
+      "max": 1856.2182961684377,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 6.986882106638422,
+      "min": 6.6749834784251805,
+      "max": 7.319819514511847,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 47.6232108194381,
+      "min": 43.07870496995747,
+      "max": 50.62460317276418,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 21.902321562880562,
+      "min": 21.01559061778798,
+      "max": 22.49215960147835,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 3.1097560975609757,
+      "min": 3.1097560975609757,
+      "max": 3.1097560975609757,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 2,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-off.json",
+      "qwen3-1.7b-spec/rep2-off.json",
+      "qwen3-1.7b-spec/rep3-off.json",
+      "qwen3-1.7b-spec/rep4-off.json",
+      "qwen3-1.7b-spec/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 1527.8739338042592,
+      "min": 1427.185856165831,
+      "max": 1587.7388479327583,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 8.906621850716572,
+      "min": 8.607853274774172,
+      "max": 9.75596535877854,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 56.288839085027575,
+      "min": 54.323174990713596,
+      "max": 59.8400270100683,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 27.29259849516581,
+      "min": 26.595560207329306,
+      "max": 29.58745978407792,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 3.0548780487804876,
+      "min": 3.0548780487804876,
+      "max": 3.0740740740740744,
+      "n": 5
+     },
+     "exactsample_steps": [
+      98,
+      99
+     ],
+     "requests_with_differing_tokens_across_reps": 4,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-old.json",
+      "qwen3-1.7b-spec/rep2-old.json",
+      "qwen3-1.7b-spec/rep3-old.json",
+      "qwen3-1.7b-spec/rep4-old.json",
+      "qwen3-1.7b-spec/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.8578414432619722,
+     "tpot_vs_off": 1.2747634373641648,
+     "step_vs_off": 1.2461052777811708
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 1922.370301077316,
+      "min": 1864.7090335314313,
+      "max": 2013.253825992651,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 6.989285568067548,
+      "min": 6.822847710082344,
+      "max": 7.304479739646993,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 47.20997903496027,
+      "min": 43.9820890314877,
+      "max": 97.98982599750161,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 21.96600941038623,
+      "min": 20.97440649486464,
+      "max": 22.64525100934444,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 3.0548780487804876,
+      "min": 3.0548780487804876,
+      "max": 3.0548780487804876,
+      "n": 5
+     },
+     "exactsample_steps": [
+      98
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-on.json",
+      "qwen3-1.7b-spec/rep2-on.json",
+      "qwen3-1.7b-spec/rep3-on.json",
+      "qwen3-1.7b-spec/rep4-on.json",
+      "qwen3-1.7b-spec/rep5-on.json"
+     ],
+     "throughput_vs_off": 1.079335720751544,
+     "tpot_vs_off": 1.000343996276514,
+     "step_vs_off": 1.002907812640903
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": "Qwen/Qwen3-0.6B@c1899de289a0",
+   "setting": "topk_topp",
+   "concurrency": 64,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 4940.616068457286,
+      "min": 4663.225457935272,
+      "max": 5018.4188359966465,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 9.511091796608241,
+      "min": 9.456528599976618,
+      "max": 10.451452776460963,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 73.29687499441206,
+      "min": 72.42253515869379,
+      "max": 75.12281299568713,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 26.529485024511814,
+      "min": 26.118186680600047,
+      "max": 30.02946979453803,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 3.0,
+      "min": 3.0,
+      "max": 3.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 19,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-off.json",
+      "qwen3-1.7b-spec/rep2-off.json",
+      "qwen3-1.7b-spec/rep3-off.json",
+      "qwen3-1.7b-spec/rep4-off.json",
+      "qwen3-1.7b-spec/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 4172.803543298562,
+      "min": 4061.755739540719,
+      "max": 4265.924413662958,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 11.975943996552742,
+      "min": 11.810084041116724,
+      "max": 12.524024051084531,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 87.63905288651586,
+      "min": 84.27050011232495,
+      "max": 92.10255206562579,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 33.55877806878306,
+      "min": 32.826223452456105,
+      "max": 34.476270119094444,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.897727272727273,
+      "min": 2.897727272727273,
+      "max": 2.9143808777429467,
+      "n": 5
+     },
+     "exactsample_steps": [
+      118
+     ],
+     "requests_with_differing_tokens_across_reps": 18,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-old.json",
+      "qwen3-1.7b-spec/rep2-old.json",
+      "qwen3-1.7b-spec/rep3-old.json",
+      "qwen3-1.7b-spec/rep4-old.json",
+      "qwen3-1.7b-spec/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.84459174432502,
+     "tpot_vs_off": 1.2591555472972613,
+     "step_vs_off": 1.2649615338472104
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 5317.321610688739,
+      "min": 5100.850396760611,
+      "max": 5388.921147951563,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 9.361876957301124,
+      "min": 9.316665149640803,
+      "max": 9.821217361034131,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 75.16864500939846,
+      "min": 71.83413999155164,
+      "max": 78.23582598939538,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 26.33547456537047,
+      "min": 25.985570059309147,
+      "max": 27.453106274812395,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 2.897727272727273,
+      "min": 2.897727272727273,
+      "max": 2.897727272727273,
+      "n": 5
+     },
+     "exactsample_steps": [
+      118
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b-spec/rep1-on.json",
+      "qwen3-1.7b-spec/rep2-on.json",
+      "qwen3-1.7b-spec/rep3-on.json",
+      "qwen3-1.7b-spec/rep4-on.json",
+      "qwen3-1.7b-spec/rep5-on.json"
+     ],
+     "throughput_vs_off": 1.0762466738989254,
+     "tpot_vs_off": 0.9843114920454948,
+     "step_vs_off": 0.9926869873666191
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": null,
+   "setting": "temp_only",
+   "concurrency": 1,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 231.06039147609926,
+      "min": 230.99879440661624,
+      "max": 231.13181893678538,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 4.320536407769895,
+      "min": 4.319394827254262,
+      "max": 4.321101015689327,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 6.353229051455855,
+      "min": 6.0266421642154455,
+      "max": 6.431537214666605,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 4.327872871726868,
+      "min": 4.326535414293176,
+      "max": 4.32902692227799,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-off.json",
+      "qwen3-1.7b/rep2-off.json",
+      "qwen3-1.7b/rep3-off.json",
+      "qwen3-1.7b/rep4-off.json",
+      "qwen3-1.7b/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 194.89224008604924,
+      "min": 178.63819148269602,
+      "max": 199.31865999198854,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 5.105545090547964,
+      "min": 4.991753901555842,
+      "max": 5.574628078908313,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 11.531015858054161,
+      "min": 11.245598085224628,
+      "max": 11.630360968410969,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 5.131040617925464,
+      "min": 5.017091726585932,
+      "max": 5.597907097580901,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-old.json",
+      "qwen3-1.7b/rep2-old.json",
+      "qwen3-1.7b/rep3-old.json",
+      "qwen3-1.7b/rep4-old.json",
+      "qwen3-1.7b/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.8434688387784921,
+     "tpot_vs_off": 1.1816924123972983,
+     "step_vs_off": 1.1855802538576241
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 230.01881498360547,
+      "min": 225.02441099185268,
+      "max": 230.27309616305132,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 4.33686666245408,
+      "min": 4.333428631299267,
+      "max": 4.43596490202289,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 6.481162970885634,
+      "min": 6.191070191562176,
+      "max": 10.365562979131937,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 4.347470445281942,
+      "min": 4.342669711149938,
+      "max": 4.443962304321758,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-on.json",
+      "qwen3-1.7b/rep2-on.json",
+      "qwen3-1.7b/rep3-on.json",
+      "qwen3-1.7b/rep4-on.json",
+      "qwen3-1.7b/rep5-on.json"
+     ],
+     "throughput_vs_off": 0.9954921893543077,
+     "tpot_vs_off": 1.0037796822299234,
+     "step_vs_off": 1.0045282230176171
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": null,
+   "setting": "temp_only",
+   "concurrency": 16,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 3092.614849449762,
+      "min": 3054.7591266655554,
+      "max": 3095.6767875789656,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 5.150269541670294,
+      "min": 5.144435403795511,
+      "max": 5.196141930041359,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 11.533878045156598,
+      "min": 11.120988987386227,
+      "max": 15.835536876693368,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 5.173615460989822,
+      "min": 5.168498230887053,
+      "max": 5.237728847532708,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-off.json",
+      "qwen3-1.7b/rep2-off.json",
+      "qwen3-1.7b/rep3-off.json",
+      "qwen3-1.7b/rep4-off.json",
+      "qwen3-1.7b/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 2630.4225791229846,
+      "min": 2460.496410384685,
+      "max": 2649.0194733218173,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 6.04006945082516,
+      "min": 5.995064458864577,
+      "max": 6.43025644342689,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 17.18010799959302,
+      "min": 16.939881024882197,
+      "max": 24.9832549598068,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 6.082672847696813,
+      "min": 6.039970699021069,
+      "max": 6.502752831693215,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-old.json",
+      "qwen3-1.7b/rep2-old.json",
+      "qwen3-1.7b/rep3-old.json",
+      "qwen3-1.7b/rep4-old.json",
+      "qwen3-1.7b/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.8505496827679623,
+     "tpot_vs_off": 1.1727676390440516,
+     "step_vs_off": 1.175710273320752
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 3072.806370628505,
+      "min": 3060.8501051108506,
+      "max": 3077.587035288791,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 5.18121600388458,
+      "min": 5.17377384719165,
+      "max": 5.200936847055952,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 11.593071045354009,
+      "min": 11.306591099128127,
+      "max": 11.947000166401267,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 5.206966554396786,
+      "min": 5.198878152441466,
+      "max": 5.22730596094334,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-on.json",
+      "qwen3-1.7b/rep2-on.json",
+      "qwen3-1.7b/rep3-on.json",
+      "qwen3-1.7b/rep4-on.json",
+      "qwen3-1.7b/rep5-on.json"
+     ],
+     "throughput_vs_off": 0.9935949092319786,
+     "tpot_vs_off": 1.0060087073043267,
+     "step_vs_off": 1.0064463804197352
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": null,
+   "setting": "temp_only",
+   "concurrency": 64,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 10166.904234799049,
+      "min": 10076.626291643044,
+      "max": 10171.692109987314,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 6.193368890158394,
+      "min": 6.190042894370124,
+      "max": 6.250398533930089,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 32.16489893384278,
+      "min": 31.994982855394483,
+      "max": 32.69328293390572,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 6.294934871220903,
+      "min": 6.2919718084231135,
+      "max": 6.351332097437989,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-off.json",
+      "qwen3-1.7b/rep2-off.json",
+      "qwen3-1.7b/rep3-off.json",
+      "qwen3-1.7b/rep4-off.json",
+      "qwen3-1.7b/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 8398.69574948722,
+      "min": 8263.518295929107,
+      "max": 8453.09429086746,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 7.499154952957349,
+      "min": 7.44344223948086,
+      "max": 7.622209595808504,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 39.01093313470483,
+      "min": 38.480293937027454,
+      "max": 41.24535201117396,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 7.6202307964194915,
+      "min": 7.5711920153480605,
+      "max": 7.744885133433854,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-old.json",
+      "qwen3-1.7b/rep2-old.json",
+      "qwen3-1.7b/rep3-old.json",
+      "qwen3-1.7b/rep4-old.json",
+      "qwen3-1.7b/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.8260819179097169,
+     "tpot_vs_off": 1.210836151690225,
+     "step_vs_off": 1.2105336992853664
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 10090.859978208116,
+      "min": 9451.11034430525,
+      "max": 10099.27001783015,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 6.239192212438758,
+      "min": 6.235767443500021,
+      "max": 6.663692956242492,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 32.638019882142544,
+      "min": 32.1557919960469,
+      "max": 36.12764202989638,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 6.342373210827645,
+      "min": 6.337091679597506,
+      "max": 6.771691120775358,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-on.json",
+      "qwen3-1.7b/rep2-on.json",
+      "qwen3-1.7b/rep3-on.json",
+      "qwen3-1.7b/rep4-on.json",
+      "qwen3-1.7b/rep5-on.json"
+     ],
+     "throughput_vs_off": 0.9925204118348386,
+     "tpot_vs_off": 1.0073987716690314,
+     "step_vs_off": 1.0075359539974942
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": null,
+   "setting": "topk_topp",
+   "concurrency": 1,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 224.1202505161741,
+      "min": 224.10339477571426,
+      "max": 224.96709613280944,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 4.440138399527937,
+      "min": 4.436933827202986,
+      "max": 4.453638018857615,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 6.649472052231431,
+      "min": 6.461133016273379,
+      "max": 10.820301016792655,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 4.461890425773163,
+      "min": 4.445094492439239,
+      "max": 4.462226022951654,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2520,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-off.json",
+      "qwen3-1.7b/rep2-off.json",
+      "qwen3-1.7b/rep3-off.json",
+      "qwen3-1.7b/rep4-off.json",
+      "qwen3-1.7b/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 197.67372878219783,
+      "min": 195.0821775037045,
+      "max": 199.73985458429297,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 5.032636310138247,
+      "min": 4.981300815501634,
+      "max": 5.098779654751222,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 11.73728285357356,
+      "min": 11.43050310201943,
+      "max": 12.235287111252546,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 5.058841183199547,
+      "min": 5.006512105865113,
+      "max": 5.1260448944958625,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2520,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-old.json",
+      "qwen3-1.7b/rep2-old.json",
+      "qwen3-1.7b/rep3-old.json",
+      "qwen3-1.7b/rep4-old.json",
+      "qwen3-1.7b/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.8819985178801694,
+     "tpot_vs_off": 1.133441315854772,
+     "step_vs_off": 1.133788753300221
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 228.74922269641255,
+      "min": 228.7179534583216,
+      "max": 229.03260394888085,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 4.363621396067388,
+      "min": 4.358091517625486,
+      "max": 4.3639053097542595,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 6.425594910979271,
+      "min": 6.379903992637992,
+      "max": 6.483850069344044,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 4.371599554360728,
+      "min": 4.36619058928045,
+      "max": 4.372197218799556,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2520,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-on.json",
+      "qwen3-1.7b/rep2-on.json",
+      "qwen3-1.7b/rep3-on.json",
+      "qwen3-1.7b/rep4-on.json",
+      "qwen3-1.7b/rep5-on.json"
+     ],
+     "throughput_vs_off": 1.0206539666521761,
+     "tpot_vs_off": 0.98276697783369,
+     "step_vs_off": 0.9797639872797214
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": null,
+   "setting": "topk_topp",
+   "concurrency": 16,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 3007.789198033839,
+      "min": 2903.7748481545377,
+      "max": 3016.3067207400063,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 5.29557595248608,
+      "min": 5.2773136271200345,
+      "max": 5.483299698315415,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 12.030872981995344,
+      "min": 11.320204008370638,
+      "max": 12.321174843236804,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 5.319521730598353,
+      "min": 5.304500331476447,
+      "max": 5.510069077899971,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-off.json",
+      "qwen3-1.7b/rep2-off.json",
+      "qwen3-1.7b/rep3-off.json",
+      "qwen3-1.7b/rep4-off.json",
+      "qwen3-1.7b/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 2651.322841819494,
+      "min": 2600.52483180591,
+      "max": 2660.8898075840843,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 5.9901923726440645,
+      "min": 5.968209435505901,
+      "max": 6.109039631544375,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 17.38410792313516,
+      "min": 17.199474154040217,
+      "max": 17.49058999121189,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 6.034723402080999,
+      "min": 6.013026151777012,
+      "max": 6.152604199087364,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-old.json",
+      "qwen3-1.7b/rep2-old.json",
+      "qwen3-1.7b/rep3-old.json",
+      "qwen3-1.7b/rep4-old.json",
+      "qwen3-1.7b/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.8814855919931611,
+     "tpot_vs_off": 1.1311691922446865,
+     "step_vs_off": 1.134448491368828
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 3057.7879150784743,
+      "min": 3027.5797610049026,
+      "max": 3073.823066852886,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 5.186592289885762,
+      "min": 5.181082634839649,
+      "max": 5.2606001140221075,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 12.483163038268685,
+      "min": 11.359045980498195,
+      "max": 17.729985993355513,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 5.2325407923490275,
+      "min": 5.20524430066871,
+      "max": 5.2847492925138795,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2790,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-on.json",
+      "qwen3-1.7b/rep2-on.json",
+      "qwen3-1.7b/rep3-on.json",
+      "qwen3-1.7b/rep4-on.json",
+      "qwen3-1.7b/rep5-on.json"
+     ],
+     "throughput_vs_off": 1.0166230788638109,
+     "tpot_vs_off": 0.9794198660205876,
+     "step_vs_off": 0.9836487295936769
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-1.7B@70d244cc86cc",
+   "draft": null,
+   "setting": "topk_topp",
+   "concurrency": 64,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 9852.320031970576,
+      "min": 9607.918604832172,
+      "max": 9862.09265954246,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 6.392899403969447,
+      "min": 6.377532604314824,
+      "max": 6.559194529465601,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 33.16745301708579,
+      "min": 32.33441989868879,
+      "max": 36.27655399031937,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 6.495931901554286,
+      "min": 6.489494898232806,
+      "max": 6.66117216769635,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-off.json",
+      "qwen3-1.7b/rep2-off.json",
+      "qwen3-1.7b/rep3-off.json",
+      "qwen3-1.7b/rep4-off.json",
+      "qwen3-1.7b/rep5-off.json"
+     ]
+    },
+    "old": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 8481.829284651678,
+      "min": 8288.086631057495,
+      "max": 8563.162100885853,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 7.423150863534972,
+      "min": 7.35189138875142,
+      "max": 7.595833326123802,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 38.73972385190427,
+      "min": 38.56334392912686,
+      "max": 41.02082294411957,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 7.545542105617642,
+      "min": 7.473874632523803,
+      "max": 7.7219270078785485,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-old.json",
+      "qwen3-1.7b/rep2-old.json",
+      "qwen3-1.7b/rep3-old.json",
+      "qwen3-1.7b/rep4-old.json",
+      "qwen3-1.7b/rep5-old.json"
+     ],
+     "throughput_vs_off": 0.8608966474016594,
+     "tpot_vs_off": 1.16115558754543,
+     "step_vs_off": 1.1615796193633456
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 10093.203713117557,
+      "min": 9875.219453572423,
+      "max": 10112.83376953905,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 6.231031086588023,
+      "min": 6.227545227453697,
+      "max": 6.3784312895115685,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 32.48996194452047,
+      "min": 32.08365896716714,
+      "max": 36.04592592455447,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 6.340900453324139,
+      "min": 6.32859210963943,
+      "max": 6.480868632934289,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-1.7b/rep1-on.json",
+      "qwen3-1.7b/rep2-on.json",
+      "qwen3-1.7b/rep3-on.json",
+      "qwen3-1.7b/rep4-on.json",
+      "qwen3-1.7b/rep5-on.json"
+     ],
+     "throughput_vs_off": 1.0244494373269766,
+     "tpot_vs_off": 0.9746799836579756,
+     "step_vs_off": 0.9761340712033861
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-8B@b968826d9c46",
+   "draft": null,
+   "setting": "temp_only",
+   "concurrency": 1,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 59.37095625769394,
+      "min": 59.3514124098409,
+      "max": 59.39489594536769,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 16.823878466133394,
+      "min": 16.821099321960528,
+      "max": 16.833278913890908,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 20.161923952400684,
+      "min": 20.07120894268155,
+      "max": 23.200214141979814,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 16.84325237511075,
+      "min": 16.83646353922086,
+      "max": 16.84879869571887,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 1,
+     "sm_clock_mhz": [
+      2775,
+      2775
+     ],
+     "files": [
+      "qwen3-8b/rep1-off.json",
+      "qwen3-8b/rep2-off.json",
+      "qwen3-8b/rep3-off.json",
+      "qwen3-8b/rep4-off.json",
+      "qwen3-8b/rep5-off.json"
+     ]
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 59.33442205775525,
+      "min": 59.31469474586442,
+      "max": 59.35032546187014,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 16.841256914331634,
+      "min": 16.83612948593994,
+      "max": 16.84457206660334,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 20.302251912653446,
+      "min": 20.002828910946846,
+      "max": 21.12135896459222,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 16.85362333228113,
+      "min": 16.849107266352803,
+      "max": 16.859228632711165,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2760,
+      2775
+     ],
+     "files": [
+      "qwen3-8b/rep1-on.json",
+      "qwen3-8b/rep2-on.json",
+      "qwen3-8b/rep3-on.json",
+      "qwen3-8b/rep4-on.json",
+      "qwen3-8b/rep5-on.json"
+     ],
+     "throughput_vs_off": 0.9993846452501098,
+     "tpot_vs_off": 1.001032963251204,
+     "step_vs_off": 1.0006157336445132
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-8B@b968826d9c46",
+   "draft": null,
+   "setting": "temp_only",
+   "concurrency": 16,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 882.0627156052233,
+      "min": 881.381447156203,
+      "max": 882.2269180974985,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 18.045543121429635,
+      "min": 18.042967799941405,
+      "max": 18.060910800362336,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 41.57989006489515,
+      "min": 41.17476404644549,
+      "max": 42.76775196194649,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 18.139299753784144,
+      "min": 18.135923617592198,
+      "max": 18.15332062142261,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 9,
+     "sm_clock_mhz": [
+      2775,
+      2775
+     ],
+     "files": [
+      "qwen3-8b/rep1-off.json",
+      "qwen3-8b/rep2-off.json",
+      "qwen3-8b/rep3-off.json",
+      "qwen3-8b/rep4-off.json",
+      "qwen3-8b/rep5-off.json"
+     ]
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 880.7762785598585,
+      "min": 880.3106286205958,
+      "max": 881.0663698268598,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 18.06878243189524,
+      "min": 18.068498583948788,
+      "max": 18.077418071163052,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 41.877130046486855,
+      "min": 41.412446182221174,
+      "max": 43.09420380741358,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 18.1657935045223,
+      "min": 18.159812413614418,
+      "max": 18.17540249976446,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2760,
+      2775
+     ],
+     "files": [
+      "qwen3-8b/rep1-on.json",
+      "qwen3-8b/rep2-on.json",
+      "qwen3-8b/rep3-on.json",
+      "qwen3-8b/rep4-on.json",
+      "qwen3-8b/rep5-on.json"
+     ],
+     "throughput_vs_off": 0.9985415583012347,
+     "tpot_vs_off": 1.0012878144098643,
+     "step_vs_off": 1.0014605718576666
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-8B@b968826d9c46",
+   "draft": null,
+   "setting": "temp_only",
+   "concurrency": 64,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 3018.304988236981,
+      "min": 3014.6780957554543,
+      "max": 3018.575339315526,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 20.764143973150674,
+      "min": 20.76107851393959,
+      "max": 20.782000051044363,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 133.4181809797883,
+      "min": 132.5849499553442,
+      "max": 135.32127090729773,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 21.203953957410704,
+      "min": 21.202054878813215,
+      "max": 21.229463965028117,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 49,
+     "sm_clock_mhz": [
+      2760,
+      2775
+     ],
+     "files": [
+      "qwen3-8b/rep1-off.json",
+      "qwen3-8b/rep2-off.json",
+      "qwen3-8b/rep3-off.json",
+      "qwen3-8b/rep4-off.json",
+      "qwen3-8b/rep5-off.json"
+     ]
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 3010.6877745620836,
+      "min": 3009.2926052737216,
+      "max": 3012.0590260320073,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 20.810671007333728,
+      "min": 20.807384431143017,
+      "max": 20.81682061155637,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 134.46571514941752,
+      "min": 133.2967560738325,
+      "max": 136.2630280200392,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 21.25760118360631,
+      "min": 21.247923578812333,
+      "max": 21.26745664008922,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2760,
+      2775
+     ],
+     "files": [
+      "qwen3-8b/rep1-on.json",
+      "qwen3-8b/rep2-on.json",
+      "qwen3-8b/rep3-on.json",
+      "qwen3-8b/rep4-on.json",
+      "qwen3-8b/rep5-on.json"
+     ],
+     "throughput_vs_off": 0.9974763273742768,
+     "tpot_vs_off": 1.002240739336195,
+     "step_vs_off": 1.0025300576629887
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-8B@b968826d9c46",
+   "draft": null,
+   "setting": "topk_topp",
+   "concurrency": 1,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 58.98820636079283,
+      "min": 58.9382752172344,
+      "max": 59.00383194651723,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 16.935131250533694,
+      "min": 16.93468279223524,
+      "max": 16.95424941934499,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 20.559912780299783,
+      "min": 20.18879516981542,
+      "max": 21.38714212924242,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 16.95254122296319,
+      "min": 16.948051796134678,
+      "max": 16.966903023785562,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 1,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-8b/rep1-off.json",
+      "qwen3-8b/rep2-off.json",
+      "qwen3-8b/rep3-off.json",
+      "qwen3-8b/rep4-off.json",
+      "qwen3-8b/rep5-off.json"
+     ]
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 59.268889216513635,
+      "min": 59.24684723610288,
+      "max": 59.298474892113,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 16.85879921960626,
+      "min": 16.85023221972526,
+      "max": 16.86626134586393,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 20.32972197048366,
+      "min": 20.003142999485135,
+      "max": 20.7719539757818,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 16.872258164767118,
+      "min": 16.863840121004614,
+      "max": 16.878535258001648,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-8b/rep1-on.json",
+      "qwen3-8b/rep2-on.json",
+      "qwen3-8b/rep3-on.json",
+      "qwen3-8b/rep4-on.json",
+      "qwen3-8b/rep5-on.json"
+     ],
+     "throughput_vs_off": 1.004758287682186,
+     "tpot_vs_off": 0.9954926814679971,
+     "step_vs_off": 0.9952642463958545
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-8B@b968826d9c46",
+   "draft": null,
+   "setting": "topk_topp",
+   "concurrency": 16,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 875.5766030233527,
+      "min": 875.0284171098638,
+      "max": 875.6524498583511,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 18.18239678007861,
+      "min": 18.18085991795741,
+      "max": 18.193653744517587,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 41.52224492281675,
+      "min": 41.39009094797075,
+      "max": 41.59093205817044,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 18.273672394570895,
+      "min": 18.272089574566053,
+      "max": 18.285120445398206,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 12,
+     "sm_clock_mhz": [
+      2775,
+      2790
+     ],
+     "files": [
+      "qwen3-8b/rep1-off.json",
+      "qwen3-8b/rep2-off.json",
+      "qwen3-8b/rep3-off.json",
+      "qwen3-8b/rep4-off.json",
+      "qwen3-8b/rep5-off.json"
+     ]
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 880.28813663744,
+      "min": 880.2537979521354,
+      "max": 880.4448836391931,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 18.0828394980042,
+      "min": 18.080634914119454,
+      "max": 18.083207980346156,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 41.79415781982243,
+      "min": 41.59866110421717,
+      "max": 42.010658187791705,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 18.175866894125647,
+      "min": 18.172631015659135,
+      "max": 18.17657593437616,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2775,
+      2775
+     ],
+     "files": [
+      "qwen3-8b/rep1-on.json",
+      "qwen3-8b/rep2-on.json",
+      "qwen3-8b/rep3-on.json",
+      "qwen3-8b/rep4-on.json",
+      "qwen3-8b/rep5-on.json"
+     ],
+     "throughput_vs_off": 1.00538106385874,
+     "tpot_vs_off": 0.994524523731465,
+     "step_vs_off": 0.9946477370101969
+    }
+   }
+  },
+  {
+   "model": "Qwen/Qwen3-8B@b968826d9c46",
+   "draft": null,
+   "setting": "topk_topp",
+   "concurrency": 64,
+   "arms": {
+    "off": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 2991.1486110714623,
+      "min": 2989.5636837770617,
+      "max": 2992.6186523890156,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 20.946977548666442,
+      "min": 20.945656490420884,
+      "max": 20.96432724638897,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 134.09624504856765,
+      "min": 133.53938609361649,
+      "max": 136.70911197550595,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 21.396462804659677,
+      "min": 21.385952382843243,
+      "max": 21.407806211755087,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      null
+     ],
+     "requests_with_differing_tokens_across_reps": 45,
+     "sm_clock_mhz": [
+      2775,
+      2775
+     ],
+     "files": [
+      "qwen3-8b/rep1-off.json",
+      "qwen3-8b/rep2-off.json",
+      "qwen3-8b/rep3-off.json",
+      "qwen3-8b/rep4-off.json",
+      "qwen3-8b/rep5-off.json"
+     ]
+    },
+    "on": {
+     "reps": 5,
+     "throughput_tok_s": {
+      "median": 3012.285233868824,
+      "min": 3011.263322138478,
+      "max": 3013.7926365171184,
+      "n": 5
+     },
+     "tpot_ms": {
+      "median": 20.7999228116344,
+      "min": 20.788958093480154,
+      "max": 20.80581738869203,
+      "n": 5
+     },
+     "ttft_ms": {
+      "median": 134.21979686245322,
+      "min": 133.37233406491578,
+      "max": 139.7019021678716,
+      "n": 5
+     },
+     "ms_per_engine_step": {
+      "median": 21.246327964036027,
+      "min": 21.235701230580162,
+      "max": 21.25353818428266,
+      "n": 5
+     },
+     "decode_tokens_per_output": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+     },
+     "exactsample_steps": [
+      256
+     ],
+     "requests_with_differing_tokens_across_reps": 0,
+     "sm_clock_mhz": [
+      2760,
+      2775
+     ],
+     "files": [
+      "qwen3-8b/rep1-on.json",
+      "qwen3-8b/rep2-on.json",
+      "qwen3-8b/rep3-on.json",
+      "qwen3-8b/rep4-on.json",
+      "qwen3-8b/rep5-on.json"
+     ],
+     "throughput_vs_off": 1.0070663900546855,
+     "tpot_vs_off": 0.9929796679883582,
+     "step_vs_off": 0.9929831934374239
+    }
+   }
+  }
+ ],
+ "profiled": []
+}

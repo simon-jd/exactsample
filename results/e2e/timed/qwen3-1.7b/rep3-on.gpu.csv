@@ -1,0 +1,3 @@
+phase,timestamp,pstate,sm_clock,mem_clock,temperature,power,memory_used,utilization,loadavg
+before,2026/11/01 01:26:04.717, P0, 2790 MHz, 10501 MHz, 56, 80.63 W, 692 MiB, 0 %,5.32
+after,2026/11/01 01:26:28.834, P0, 2790 MHz, 10501 MHz, 56, 80.94 W, 693 MiB, 0 %,6.51
