@@ -10,14 +10,20 @@ the logits row that produced the first differing token is bitwise identical
 to the one in the alone run, the sampler made the difference; otherwise the
 model's logits already differed.
 
-Scenarios with --kv large: ``alone`` (each probe by itself), ``mixed_first``
-(probes, then 15 other requests, admitted together), ``mixed_last`` (31 other
-requests first, probes last, so they get other slots), ``staggered``
-(probes join 3 steps after 15 others; 16 more join 5 steps later).
-With --kv small: ``preempt`` (the probes join four long requests in a KV
-cache too small for all of them as they grow: the scheduler preempts the
-latest admitted and recomputes them later), then ``alone``. An extra probe without a seed is
-added to ``preempt``; its ``alone`` run uses the seed it was admitted with.
+The probes are six seeded requests (two each at T=0.6 top-k 20 top-p 0.95,
+T=1.0, and T=0.8 top-p 0.9) on chat prompts from bench/capture_logits.py, and
+two unseeded ones. Requests are added while the scheduler is paused, so each
+group joins the same step.
+
+Scenarios with --kv large (seeded probes): ``alone`` (each probe by itself),
+``mixed_first`` (probes, then 15 other requests, admitted together),
+``mixed_last`` (31 other requests first, probes last, so they get other
+slots), ``staggered`` (probes join 3 steps after 15 others; 16 more join 5
+steps later). With --kv small: ``preempt`` (all eight probes join four long
+requests in a KV cache too small for all of them as they grow: the scheduler
+preempts the latest admitted and recomputes them later), then ``alone``, in
+which each unseeded probe gets, as an explicit seed, the seed vLLM gave it at
+its first admission.
 """
 from __future__ import annotations
 
@@ -29,16 +35,16 @@ import os
 from pathlib import Path
 import time
 
-PROBES = {  # name: (prompt length, setting, seed)
-    "p0": (48, {"temperature": 0.6, "top_k": 20, "top_p": 0.95}, 101),
-    "p1": (80, {"temperature": 0.6, "top_k": 20, "top_p": 0.95}, 202),
-    "p2": (112, {"temperature": 1.0}, 303),
+QWEN3 = {"temperature": 0.6, "top_k": 20, "top_p": 0.95}
+TEMPERATURE = {"temperature": 1.0}
+NUCLEUS = {"temperature": 0.8, "top_p": 0.9}
+PROBES = {  # name: (index into bench/capture_logits.py PROMPTS, setting, seed)
+    "p0": (0, QWEN3, 101), "p1": (16, QWEN3, 202),
+    "p2": (27, TEMPERATURE, 303), "p3": (10, TEMPERATURE, 404),
+    "p4": (3, NUCLEUS, 505), "p5": (21, NUCLEUS, 606),
 }
-UNSEEDED = ("u0", (64, {"temperature": 0.6, "top_k": 20, "top_p": 0.95}, None))
-FILLER_SETTINGS = ({"temperature": 0.6, "top_k": 20, "top_p": 0.95}, {"temperature": 1.0},
-                   {"temperature": 0.8, "top_p": 0.9})
-TEXT = ("A lighthouse keeper writes down the weather every hour: wind from the west, a long swell, "
-        "gulls on the rail, and at night the slow turn of the lamp over the black water. ")
+UNSEEDED = {"u0": (5, QWEN3, None), "u1": (28, QWEN3, None)}
+FILLER_SETTINGS = (QWEN3, TEMPERATURE, NUCLEUS)
 
 
 # --- worker side ------------------------------------------------------------
@@ -132,31 +138,43 @@ def make_params(setting, seed, max_tokens):
 
 
 class Server:
-    def __init__(self, llm, stream, max_tokens):
-        self.llm, self.engine, self.stream, self.max_tokens = llm, llm.llm_engine, stream, max_tokens
-        self.tokens = {}
+    def __init__(self, llm, max_tokens):
+        from bench.capture_logits import PROMPTS
+        self.llm, self.engine, self.max_tokens, self.texts = llm, llm.llm_engine, max_tokens, PROMPTS
+        self.tokenizer = llm.get_tokenizer()
+        self.tokens, self.prompt_lens = {}, {}
 
-    def prompt(self, offset, length):
-        return {"prompt_token_ids": self.stream[offset:offset + length]}
+    def chat(self, text):
+        text = self.tokenizer.apply_chat_template([{"role": "user", "content": text}], tokenize=False,
+                                                  add_generation_prompt=True, enable_thinking=False)
+        return self.tokenizer.encode(text, add_special_tokens=False)
 
-    def add(self, request_id, offset, length, setting, seed, max_tokens=None):
-        self.tokens[request_id] = []
-        self.engine.add_request(request_id, self.prompt(offset, length),
+    def admit(self, *groups):
+        """Add requests to a paused scheduler, so they all join the same step."""
+        self.engine.engine_core.call_utility("pause_scheduler", "keep", False)
+        for add, arguments in groups:
+            add(*arguments)
+        self.engine.engine_core.call_utility("resume_scheduler")
+
+    def add(self, request_id, text, setting, seed, max_tokens=None):
+        prompt = self.chat(text)
+        self.tokens[request_id], self.prompt_lens[request_id] = [], len(prompt)
+        self.engine.add_request(request_id, {"prompt_token_ids": prompt},
                                 make_params(setting, seed, max_tokens or self.max_tokens))
 
     def add_probes(self, scenario, names=PROBES, seeds=None):
-        everything = PROBES | dict([UNSEEDED])
         for name in names:
-            length, setting, seed = everything[name]
-            prefix = "unseeded" if name == UNSEEDED[0] else "probe"
+            index, setting, seed = (PROBES | UNSEEDED)[name]
+            prefix = "unseeded" if name in UNSEEDED else "probe"
             # A probe's prompt is the same in every scenario.
-            self.add(f"{prefix}-{name}-{scenario}", 7 * list(everything).index(name), length, setting,
+            self.add(f"{prefix}-{name}-{scenario}", self.texts[index], setting,
                      seeds.get(name, seed) if seeds else seed)
 
     def add_fillers(self, scenario, count, first=0, long=False):
         for index in range(first, first + count):
-            length = 160 if long else 16 + (37 * index) % 180
-            self.add(f"filler-{scenario}-{index}", 11 * index, length, FILLER_SETTINGS[index % 3], 5000 + index,
+            # Short: one prompt and 8 to 96 tokens; long: ten prompts in one message and 200 tokens.
+            text = " ".join(self.texts[(index + k) % len(self.texts)] for k in range(10 if long else 1))
+            self.add(f"filler-{scenario}-{index}", text, FILLER_SETTINGS[index % 3], 5000 + index,
                      max_tokens=200 if long else 8 + (23 * index) % 89)
 
     def step(self, count=None):
@@ -194,7 +212,7 @@ def collect(server, scenario, log):
         result[name] = {"request_id": external, "tokens": tokens, "logits_sha_by_position": rows,
                         "batch_by_position": batches,
                         "admissions": admissions, "times_preempted": preempted,
-                        "prompt_len": (PROBES | dict([UNSEEDED]))[name][0]}
+                        "prompt_len": server.prompt_lens[external]}
     return result
 
 
@@ -250,8 +268,7 @@ def run(args):
                         else config.cache_config.num_gpu_blocks * config.cache_config.block_size,
                         "cudagraph_mode": str(config.compilation_config.cudagraph_mode),
                         "async_scheduling": config.scheduler_config.async_scheduling}
-    stream = llm.get_tokenizer().encode(TEXT * 60, add_special_tokens=False)
-    server = Server(llm, stream, args.max_tokens)
+    server = Server(llm, args.max_tokens)
     llm.collective_rpc("det_install")
     scenarios, steps = {}, {}
 
@@ -265,40 +282,36 @@ def run(args):
 
     def alone(seeds=None, names=PROBES):
         for name in names:
-            server.add_probes("alone", names=[name], seeds=seeds)
+            server.admit((server.add_probes, ("alone", [name], seeds)))
             server.step()
         finish("alone")
 
     if args.kv == "large":
         alone()
-        server.add_probes("mixed_first")
-        server.add_fillers("mixed_first", 15)
+        server.admit((server.add_probes, ("mixed_first",)), (server.add_fillers, ("mixed_first", 15)))
         finish("mixed_first")
-        server.add_fillers("mixed_last", 31)
-        server.add_probes("mixed_last")
+        server.admit((server.add_fillers, ("mixed_last", 31)), (server.add_probes, ("mixed_last",)))
         finish("mixed_last")
-        server.add_fillers("staggered", 15)
+        server.admit((server.add_fillers, ("staggered", 15)))
         server.step(3)
-        server.add_probes("staggered")
+        server.admit((server.add_probes, ("staggered",)))
         server.step(5)
-        server.add_fillers("staggered", 16, first=15)
+        server.admit((server.add_fillers, ("staggered", 16, 15)))
         finish("staggered")
     else:
         # The probes join two steps after four long requests. The cache holds
         # all of them at first but not as they grow; the scheduler then
         # preempts the latest admitted (the probes) and recomputes them later.
-        server.add_fillers("preempt", 4, long=True)
+        server.admit((server.add_fillers, ("preempt", 4, 0, True)))
         server.step(2)
-        server.add_probes("preempt", names=[*PROBES, UNSEEDED[0]])
+        server.admit((server.add_probes, ("preempt", [*PROBES, *UNSEEDED])))
         finish("preempt")
-        first = scenarios["preempt"][UNSEEDED[0]]["admissions"][0]
-        # vLLM gave the unseeded probe this seed at its first admission; the
+        # vLLM gave each unseeded probe a seed at its first admission; the
         # bridge keeps it across preemption, vLLM's own sampler draws anew.
-        seed = first["native_seed"]
-        alone(seeds={UNSEEDED[0]: seed}, names=[*PROBES, UNSEEDED[0]])
-        record["unseeded_probe"] = {"first_admission_seed": seed,
-                                    "native_seeds_at_admissions": [entry["native_seed"] for entry in
-                                                                   scenarios["preempt"][UNSEEDED[0]]["admissions"]]}
+        seeds = {name: scenarios["preempt"][name]["admissions"][0]["native_seed"] for name in UNSEEDED}
+        alone(seeds=seeds, names=[*PROBES, *UNSEEDED])
+        record["unseeded_probes"] = {name: {"first_admission_seed": seeds[name], "native_seeds_at_admissions": [
+            entry["native_seed"] for entry in scenarios["preempt"][name]["admissions"]]} for name in UNSEEDED}
     record["scenarios"], record["steps"] = scenarios, steps
     record["comparisons"] = {
         name: {probe: compare(scenarios["alone"][probe], value) for probe, value in probes.items()}
@@ -331,7 +344,7 @@ def summarize(args):
                          "first_token_divergence": {p: item["first_token_divergence"] for p, item in probes.items()},
                          "times_preempted": {p: item["times_preempted"] for p, item in probes.items()},
                          "bridge_fallback_steps": record["steps"][scenario]["bridge_fallback_steps"],
-                         "unseeded_probe": record.get("unseeded_probe") if scenario == "preempt" else None})
+                         "unseeded_probes": record.get("unseeded_probes") if scenario == "preempt" else None})
     args.output.write_text(json.dumps({"schema": "exactsample.vllm_determinism_summary.v1", "rows": rows},
                                       indent=1) + "\n")
     for row in rows:
@@ -348,7 +361,7 @@ def main(argv=None):
     one.add_argument("--exactsample", choices=("on", "off"), required=True)
     one.add_argument("--batch-invariant", action="store_true")
     one.add_argument("--kv", choices=("large", "small"), required=True)
-    one.add_argument("--max-tokens", type=int, default=48)
+    one.add_argument("--max-tokens", type=int, default=64)
     one.add_argument("--enforce-eager", action="store_true")
     one.add_argument("--output", type=Path, required=True)
     both = commands.add_parser("summarize")
