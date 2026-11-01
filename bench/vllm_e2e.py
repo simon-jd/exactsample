@@ -277,7 +277,7 @@ def provenance(args):
         return subprocess.run(["git", *command], capture_output=True, text=True,
                               cwd=Path(__file__).resolve().parents[1]).stdout.strip()
 
-    record = {"commit": git("rev-parse", "HEAD"), "worktree_clean": git("status", "--porcelain") == "",
+    record = {"commit": git("rev-parse", "HEAD"), "worktree_clean": git("status", "--porcelain", "--untracked-files=no") == "",
               "vllm": vllm.__version__, "torch": torch.__version__, "cuda_runtime": torch.version.cuda,
               "model_runner_sha256": sha(Path(vllm.__file__).parent / "v1/worker/gpu/model_runner.py"),
               "python": sys.version.split()[0]}

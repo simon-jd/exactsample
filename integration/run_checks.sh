@@ -38,7 +38,7 @@ def sha(path):
 def git(*args):
     return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout.strip()
 runner = Path(vllm.__file__).parent / "v1/worker/gpu/model_runner.py"
-record = {"commit": git("rev-parse", "HEAD"), "worktree_clean": git("status", "--porcelain") == "",
+record = {"commit": git("rev-parse", "HEAD"), "worktree_clean": git("status", "--porcelain", "--untracked-files=no") == "",
           "bridge_file": bridge.__file__, "bridge_sha256": sha(bridge.__file__),
           "vllm": vllm.__version__, "torch": torch.__version__, "cuda_runtime": torch.version.cuda,
           "model_runner_sha256": sha(runner), "gpu": torch.cuda.get_device_name(0),

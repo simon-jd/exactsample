@@ -27,6 +27,5 @@ dist/
 !/results/integration/
 !/results/e2e/
 !/results/determinism/
-/results/*/logs/
-/results/*/*/logs/
+/results/**/logs/
 /.runtime/
