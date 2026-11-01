@@ -6,7 +6,8 @@
 #   EXACTSAMPLE_TARGET=<Qwen3-1.7B dir> EXACTSAMPLE_DRAFT=<Qwen3-0.6B dir> \
 #   EXACTSAMPLE_PYTHON=<env>/bin/python bash integration/run_checks.sh results/integration
 #
-# EXACTSAMPLE_CHECKS selects a subset (names below); logs go to
+# EXACTSAMPLE_CHECKS selects a subset (names below), EXACTSAMPLE_SMOKE_ARGS adds
+# arguments to the smoke runs (e.g. --batch-invariant); logs go to
 # EXACTSAMPLE_LOG_DIR (default <output>/logs). Relative paths are taken from
 # the repository root.
 set -euo pipefail
@@ -62,11 +63,12 @@ failures=0
 
 common=(--target "$target" --draft "$draft")
 small=(--gpu-memory-utilization .28 --kv-cache-memory-bytes 1073741824)
-run smoke-on-spec "$python" integration/vllm_smoke.py "${common[@]}" "${small[@]}" --exactsample on \
+read -r -a smoke_extra <<< "${EXACTSAMPLE_SMOKE_ARGS:-}"
+run smoke-on-spec "$python" integration/vllm_smoke.py "${common[@]}" "${small[@]}" "${smoke_extra[@]}" --exactsample on \
   --max-tokens 32 --output "$out/smoke-on-spec.json"
-run smoke-on-nospec "$python" integration/vllm_smoke.py "${common[@]}" "${small[@]}" --exactsample on \
+run smoke-on-nospec "$python" integration/vllm_smoke.py "${common[@]}" "${small[@]}" "${smoke_extra[@]}" --exactsample on \
   --no-spec --max-tokens 32 --output "$out/smoke-on-nospec.json"
-run smoke-off-spec "$python" integration/vllm_smoke.py "${common[@]}" "${small[@]}" --exactsample off \
+run smoke-off-spec "$python" integration/vllm_smoke.py "${common[@]}" "${small[@]}" "${smoke_extra[@]}" --exactsample off \
   --max-tokens 32 --output "$out/smoke-off-spec.json"
 run error-prefill "$python" integration/vllm_error_smoke.py "${common[@]}" "${small[@]}" --min-draft 0 \
   --output "$out/error-prefill.json"
