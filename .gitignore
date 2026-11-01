@@ -23,4 +23,7 @@ dist/
 !/results/sanitizer/
 /results/sanitizer/*
 !/results/sanitizer/summary.json
+# engine runs: their JSON and GPU-state files, not the engine logs
+!/results/integration/
+/results/*/logs/
 /.runtime/
