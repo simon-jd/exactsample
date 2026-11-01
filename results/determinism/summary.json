@@ -1,0 +1,730 @@
+{
+ "schema": "exactsample.vllm_determinism_summary.v1",
+ "rows": [
+  {
+   "file": "exactsample-bi0-large.json",
+   "sampler": "exactsample",
+   "batch_invariant": false,
+   "kv": "large",
+   "scenario": "mixed_first",
+   "probes": 6,
+   "tokens_equal": [
+    "p0",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [],
+   "causes": {
+    "p1": "model logits"
+   },
+   "first_token_divergence": {
+    "p0": null,
+    "p1": 14,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "exactsample-bi0-large.json",
+   "sampler": "exactsample",
+   "batch_invariant": false,
+   "kv": "large",
+   "scenario": "mixed_last",
+   "probes": 6,
+   "tokens_equal": [
+    "p0",
+    "p2",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [],
+   "causes": {
+    "p1": "model logits",
+    "p3": "model logits"
+   },
+   "first_token_divergence": {
+    "p0": null,
+    "p1": 36,
+    "p2": null,
+    "p3": 3,
+    "p4": null,
+    "p5": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "exactsample-bi0-large.json",
+   "sampler": "exactsample",
+   "batch_invariant": false,
+   "kv": "large",
+   "scenario": "staggered",
+   "probes": 6,
+   "tokens_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [],
+   "causes": {},
+   "first_token_divergence": {
+    "p0": null,
+    "p1": null,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "exactsample-bi0-small.json",
+   "sampler": "exactsample",
+   "batch_invariant": false,
+   "kv": "small",
+   "scenario": "preempt",
+   "probes": 8,
+   "tokens_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5",
+    "u0",
+    "u1"
+   ],
+   "logits_equal": [],
+   "causes": {},
+   "first_token_divergence": {
+    "p0": null,
+    "p1": null,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null,
+    "u0": null,
+    "u1": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 1,
+    "p5": 1,
+    "u0": 1,
+    "u1": 1
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": {
+    "u0": {
+     "first_admission_seed": 900450186894289455,
+     "native_seeds_at_admissions": [
+      900450186894289455,
+      1895649597198586619
+     ]
+    },
+    "u1": {
+     "first_admission_seed": 3969543146641149120,
+     "native_seeds_at_admissions": [
+      3969543146641149120,
+      827948490035658087
+     ]
+    }
+   }
+  },
+  {
+   "file": "exactsample-bi1-large.json",
+   "sampler": "exactsample",
+   "batch_invariant": true,
+   "kv": "large",
+   "scenario": "mixed_first",
+   "probes": 6,
+   "tokens_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "causes": {},
+   "first_token_divergence": {
+    "p0": null,
+    "p1": null,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "exactsample-bi1-large.json",
+   "sampler": "exactsample",
+   "batch_invariant": true,
+   "kv": "large",
+   "scenario": "mixed_last",
+   "probes": 6,
+   "tokens_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "causes": {},
+   "first_token_divergence": {
+    "p0": null,
+    "p1": null,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "exactsample-bi1-large.json",
+   "sampler": "exactsample",
+   "batch_invariant": true,
+   "kv": "large",
+   "scenario": "staggered",
+   "probes": 6,
+   "tokens_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "causes": {},
+   "first_token_divergence": {
+    "p0": null,
+    "p1": null,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "exactsample-bi1-small.json",
+   "sampler": "exactsample",
+   "batch_invariant": true,
+   "kv": "small",
+   "scenario": "preempt",
+   "probes": 8,
+   "tokens_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5",
+    "u0",
+    "u1"
+   ],
+   "logits_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5",
+    "u0",
+    "u1"
+   ],
+   "causes": {},
+   "first_token_divergence": {
+    "p0": null,
+    "p1": null,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null,
+    "u0": null,
+    "u1": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 1,
+    "p5": 1,
+    "u0": 1,
+    "u1": 1
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": {
+    "u0": {
+     "first_admission_seed": 900450186894289455,
+     "native_seeds_at_admissions": [
+      900450186894289455,
+      1895649597198586619
+     ]
+    },
+    "u1": {
+     "first_admission_seed": 3969543146641149120,
+     "native_seeds_at_admissions": [
+      3969543146641149120,
+      827948490035658087
+     ]
+    }
+   }
+  },
+  {
+   "file": "vllm-bi0-large.json",
+   "sampler": "vllm",
+   "batch_invariant": false,
+   "kv": "large",
+   "scenario": "mixed_first",
+   "probes": 6,
+   "tokens_equal": [
+    "p1",
+    "p2",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [],
+   "causes": {
+    "p0": "model logits",
+    "p3": "model logits"
+   },
+   "first_token_divergence": {
+    "p0": 23,
+    "p1": null,
+    "p2": null,
+    "p3": 61,
+    "p4": null,
+    "p5": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "vllm-bi0-large.json",
+   "sampler": "vllm",
+   "batch_invariant": false,
+   "kv": "large",
+   "scenario": "mixed_last",
+   "probes": 6,
+   "tokens_equal": [
+    "p1",
+    "p2",
+    "p4"
+   ],
+   "logits_equal": [],
+   "causes": {
+    "p0": "model logits",
+    "p3": "model logits",
+    "p5": "model logits"
+   },
+   "first_token_divergence": {
+    "p0": 23,
+    "p1": null,
+    "p2": null,
+    "p3": 41,
+    "p4": null,
+    "p5": 48
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "vllm-bi0-large.json",
+   "sampler": "vllm",
+   "batch_invariant": false,
+   "kv": "large",
+   "scenario": "staggered",
+   "probes": 6,
+   "tokens_equal": [
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [],
+   "causes": {
+    "p0": "model logits"
+   },
+   "first_token_divergence": {
+    "p0": 23,
+    "p1": null,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "vllm-bi0-small.json",
+   "sampler": "vllm",
+   "batch_invariant": false,
+   "kv": "small",
+   "scenario": "preempt",
+   "probes": 8,
+   "tokens_equal": [
+    "p1",
+    "p3"
+   ],
+   "logits_equal": [],
+   "causes": {
+    "p0": "model logits",
+    "p2": "model logits",
+    "p4": "model logits",
+    "p5": "model logits",
+    "u0": "model logits",
+    "u1": "model logits"
+   },
+   "first_token_divergence": {
+    "p0": 23,
+    "p1": null,
+    "p2": 61,
+    "p3": null,
+    "p4": 42,
+    "p5": 48,
+    "u0": 59,
+    "u1": 29
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 1,
+    "p5": 1,
+    "u0": 1,
+    "u1": 1
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": {
+    "u0": {
+     "first_admission_seed": 900450186894289455,
+     "native_seeds_at_admissions": [
+      900450186894289455,
+      1895649597198586619
+     ]
+    },
+    "u1": {
+     "first_admission_seed": 3969543146641149120,
+     "native_seeds_at_admissions": [
+      3969543146641149120,
+      827948490035658087
+     ]
+    }
+   }
+  },
+  {
+   "file": "vllm-bi1-large.json",
+   "sampler": "vllm",
+   "batch_invariant": true,
+   "kv": "large",
+   "scenario": "mixed_first",
+   "probes": 6,
+   "tokens_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "causes": {},
+   "first_token_divergence": {
+    "p0": null,
+    "p1": null,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "vllm-bi1-large.json",
+   "sampler": "vllm",
+   "batch_invariant": true,
+   "kv": "large",
+   "scenario": "mixed_last",
+   "probes": 6,
+   "tokens_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "causes": {},
+   "first_token_divergence": {
+    "p0": null,
+    "p1": null,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "vllm-bi1-large.json",
+   "sampler": "vllm",
+   "batch_invariant": true,
+   "kv": "large",
+   "scenario": "staggered",
+   "probes": 6,
+   "tokens_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "causes": {},
+   "first_token_divergence": {
+    "p0": null,
+    "p1": null,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 0,
+    "p5": 0
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": null
+  },
+  {
+   "file": "vllm-bi1-small.json",
+   "sampler": "vllm",
+   "batch_invariant": true,
+   "kv": "small",
+   "scenario": "preempt",
+   "probes": 8,
+   "tokens_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "logits_equal": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+   ],
+   "causes": {
+    "u0": "sampler (identical logits)",
+    "u1": "sampler (identical logits)"
+   },
+   "first_token_divergence": {
+    "p0": null,
+    "p1": null,
+    "p2": null,
+    "p3": null,
+    "p4": null,
+    "p5": null,
+    "u0": 59,
+    "u1": 42
+   },
+   "times_preempted": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "p4": 1,
+    "p5": 1,
+    "u0": 1,
+    "u1": 1
+   },
+   "bridge_fallback_steps": 0,
+   "unseeded_probes": {
+    "u0": {
+     "first_admission_seed": 900450186894289455,
+     "native_seeds_at_admissions": [
+      900450186894289455,
+      1895649597198586619
+     ]
+    },
+    "u1": {
+     "first_admission_seed": 3969543146641149120,
+     "native_seeds_at_admissions": [
+      3969543146641149120,
+      827948490035658087
+     ]
+    }
+   }
+  }
+ ]
+}
