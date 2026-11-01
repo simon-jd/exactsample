@@ -91,5 +91,7 @@ failed request emits no tokens in that step; the others keep theirs. Malformed
 bridge metadata raises before the step is submitted.
 
 The bridge still gathers metadata, copies parameters and masks, and clones
-outputs for their asynchronous lifetime; end-to-end measurements must include
-those costs.
+outputs for their asynchronous lifetime. It does so without a host wait, in
+about 0.3 to 0.5 ms of host time per step. The end-to-end measurements in
+[integration/](../integration/README.md#end-to-end-decoding) include these
+costs.

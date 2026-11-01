@@ -241,8 +241,18 @@ in [integration/](integration/README.md).
 - Up to eight temperature-only requests take 1.25 to 1.85 times vLLM's GPU
   time, and one top-p-only request takes 1.15 times FlashInfer's
   ([docs/design-tradeoffs.md](docs/design-tradeoffs.md)).
-- Benchmarked on captured logits of one model; there is no end-to-end
-  serving measurement yet.
+- End to end in vLLM, the kernel speedups shrink to a few percent at most,
+  because sampling is 0.2 to 1.7% of a decode step with exactsample and 0.1 to
+  5.8% with vLLM's sampler. On Qwen3-1.7B and Qwen3-8B with 1 to 64 requests and no draft model,
+  exactsample lowers TPOT by 0.5 to 2.5% with top-k and top-p. **With
+  temperature alone it raises TPOT by 0.1 to 0.8%**
+  ([integration/](integration/README.md#end-to-end-decoding)).
+- Batch invariance covers the sampler, not the model: without
+  `VLLM_BATCH_INVARIANT=1`, a request's logits, and so its tokens, depend on
+  its batch with either sampler. With batch-invariant kernels, vLLM's own
+  sampler is also invariant for seeded requests. exactsample adds unseeded
+  requests keeping their tokens across preemption
+  ([integration/](integration/README.md#does-a-request-depend-on-its-batch)).
 - CUDA graph capture of the call is not supported.
 - The vLLM bridge covers greedy draft models and ordinary sampling; other
   speculative methods and sampling features fall back to vLLM's own path.
