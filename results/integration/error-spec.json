@@ -1,0 +1,280 @@
+{
+  "schema": "exactsample.vllm_request_error.v1",
+  "state": "passed",
+  "started_at": "2026-11-01T08:10:38.659657+00:00",
+  "min_draft": 1,
+  "gpu_memory_utilization": 0.28,
+  "kv_cache_memory_bytes": 1073741824,
+  "injection": {
+    "request_id": "0-984383ee",
+    "other_requests": [
+      "1-bcbb46d0"
+    ],
+    "draft_count": 4,
+    "step": 1
+  },
+  "outputs": [
+    {
+      "request_id": "0",
+      "token_ids": [
+        6303
+      ],
+      "finish_reason": "error",
+      "stop_reason": "exactsample_status:1"
+    },
+    {
+      "request_id": "1",
+      "token_ids": [
+        576,
+        11652,
+        1969,
+        6644,
+        518,
+        3245,
+        220,
+        16,
+        15,
+        4244,
+        323,
+        990
+      ],
+      "finish_reason": "length",
+      "stop_reason": null
+    }
+  ],
+  "internal_to_external_ids": {
+    "0-984383ee": "0",
+    "1-bcbb46d0": "1"
+  },
+  "status": 1,
+  "failed_step_tokens_committed": 0,
+  "healthy_requests_completed": 1,
+  "trace_file": "results/integration/error-spec.trace.jsonl",
+  "gpu_observation": {
+    "interval_seconds": 0.5,
+    "samples": [
+      {
+        "time_ns": 1793520638661498676,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233321984,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520639172070375,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233321984,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520639698038942,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233321984,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520640213868190,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233321984,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520640714649003,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233321984,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520641228164757,
+        "gpu_utilization_percent": 2,
+        "memory_used_bytes": 1667497984,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          },
+          {
+            "pid": 435334,
+            "used_gpu_memory_bytes": 425721856
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520641728653229,
+        "gpu_utilization_percent": 5,
+        "memory_used_bytes": 1734606848,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          },
+          {
+            "pid": 435334,
+            "used_gpu_memory_bytes": 492830720
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520642229127427,
+        "gpu_utilization_percent": 65,
+        "memory_used_bytes": 5899550720,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          },
+          {
+            "pid": 435334,
+            "used_gpu_memory_bytes": 4657774592
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520642729729494,
+        "gpu_utilization_percent": 19,
+        "memory_used_bytes": 5899550720,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          },
+          {
+            "pid": 435334,
+            "used_gpu_memory_bytes": 4657774592
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520643230462866,
+        "gpu_utilization_percent": 13,
+        "memory_used_bytes": 7367557120,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          },
+          {
+            "pid": 435334,
+            "used_gpu_memory_bytes": 6125780992
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520643731286193,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 6451101696,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          },
+          {
+            "pid": 435334,
+            "used_gpu_memory_bytes": 5209325568
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520644231925067,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 6455296000,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          },
+          {
+            "pid": 435334,
+            "used_gpu_memory_bytes": 5213519872
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520644732657496,
+        "gpu_utilization_percent": 1,
+        "memory_used_bytes": 7526940672,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          },
+          {
+            "pid": 435334,
+            "used_gpu_memory_bytes": 6285164544
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520645404421057,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 7526940672,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          },
+          {
+            "pid": 435334,
+            "used_gpu_memory_bytes": 6285164544
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520646011017227,
+        "gpu_utilization_percent": 14,
+        "memory_used_bytes": 7529037824,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          },
+          {
+            "pid": 435334,
+            "used_gpu_memory_bytes": 6287261696
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520646040131371,
+        "gpu_utilization_percent": 14,
+        "memory_used_bytes": 7529037824,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          },
+          {
+            "pid": 435334,
+            "used_gpu_memory_bytes": 6287261696
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "scope": "NVML GPU 0, includes unrelated co-resident processes; no exclusivity claim"
+  }
+}

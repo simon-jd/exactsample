@@ -1,0 +1,13 @@
+{
+  "commit": "d4e629566efdef1032e72aabfa1188a960bf7c23",
+  "worktree_clean": true,
+  "bridge_file": ".-old/python/exactsample/vllm_bridge.py",
+  "bridge_sha256": "732c7686e776650114ea5ec3f8559f8514ff5889d6f092f36c23620a699796df",
+  "vllm": "0.31.0",
+  "torch": "2.13.0+cu130",
+  "cuda_runtime": "13.0",
+  "model_runner_sha256": "e41bcebcfcce80f4a7c2d9eace8f1714da935be657b012252aabc8d17946d415",
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "target": "Qwen/Qwen3-1.7B@70d244cc86cc",
+  "draft": "Qwen/Qwen3-0.6B@c1899de289a0"
+}

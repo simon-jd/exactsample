@@ -1,0 +1,334 @@
+{
+  "schema": "exactsample.vllm_smoke.v1",
+  "started_at": "2026-11-01T08:11:11.759664+00:00",
+  "vllm": "0.31.0",
+  "exactsample": "on",
+  "mode": "coupled",
+  "speculative": true,
+  "source_file": "~/Desktop/decode-kernels/.envs/e2e/lib/python3.12/site-packages/vllm/v1/worker/gpu/model_runner.py",
+  "source_sha256": "e41bcebcfcce80f4a7c2d9eace8f1714da935be657b012252aabc8d17946d415",
+  "target": "Qwen/Qwen3-1.7B@70d244cc86cc",
+  "draft": "Qwen/Qwen3-0.6B@c1899de289a0",
+  "batch_invariant": true,
+  "seed_only": false,
+  "repeats": 1,
+  "gpu_memory_utilization": 0.28,
+  "kv_cache_memory_bytes": 1073741824,
+  "trace_file": "./results/integration/bridge-equivalence/after/smoke-on-spec.trace.jsonl",
+  "state": "passed",
+  "outputs": [
+    {
+      "request_id": "0",
+      "prompt": "Complete briefly: The sky is",
+      "repetition": 0,
+      "text": " blue because of the way light is scattered by the atmosphere. The light from the sun is white, and when it passes through the atmosphere, it scatters.",
+      "token_ids": [
+        6303,
+        1576,
+        315,
+        279,
+        1616,
+        3100,
+        374,
+        36967,
+        553,
+        279,
+        16566,
+        13,
+        576,
+        3100,
+        504,
+        279,
+        7015,
+        374,
+        4158,
+        11,
+        323,
+        979,
+        432,
+        16211,
+        1526,
+        279,
+        16566,
+        11,
+        432,
+        1136,
+        10175,
+        13
+      ],
+      "finish_reason": "length"
+    },
+    {
+      "request_id": "1",
+      "prompt": "Reply with a short sentence about rain.",
+      "repetition": 0,
+      "text": " The sentence must not contain any words that start with \"r\" or \"s\".\nTo be clear, the sentence must not have any words that start with \"",
+      "token_ids": [
+        576,
+        11652,
+        1969,
+        537,
+        6644,
+        894,
+        4244,
+        429,
+        1191,
+        448,
+        330,
+        81,
+        1,
+        476,
+        330,
+        82,
+        22956,
+        1249,
+        387,
+        2797,
+        11,
+        279,
+        11652,
+        1969,
+        537,
+        614,
+        894,
+        4244,
+        429,
+        1191,
+        448,
+        330
+      ],
+      "finish_reason": "length"
+    },
+    {
+      "request_id": "2",
+      "prompt": "Output only a JSON object whose \"answer\" is the integer 7.",
+      "repetition": 0,
+      "text": "{\"answer\": 7}",
+      "token_ids": [
+        4913,
+        9217,
+        788,
+        220,
+        22,
+        92,
+        151643
+      ],
+      "finish_reason": "stop"
+    }
+  ],
+  "valid_json": true,
+  "exactsample_steps": 21,
+  "fallback_events": [],
+  "gpu_observation": {
+    "interval_seconds": 0.5,
+    "samples": [
+      {
+        "time_ns": 1793520671761645392,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233125376,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520672272177828,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233125376,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520672798175582,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233125376,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520673348054026,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233125376,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520673849470383,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1236008960,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520674349959873,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1667301376,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          },
+          {
+            "pid": 438085,
+            "used_gpu_memory_bytes": 425721856
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520674850496740,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 5899354112,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          },
+          {
+            "pid": 438085,
+            "used_gpu_memory_bytes": 4657774592
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520675351234681,
+        "gpu_utilization_percent": 57,
+        "memory_used_bytes": 5899354112,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          },
+          {
+            "pid": 438085,
+            "used_gpu_memory_bytes": 4657774592
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520675851962293,
+        "gpu_utilization_percent": 6,
+        "memory_used_bytes": 7367360512,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          },
+          {
+            "pid": 438085,
+            "used_gpu_memory_bytes": 6125780992
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520676352597056,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 6411059200,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          },
+          {
+            "pid": 438085,
+            "used_gpu_memory_bytes": 5169479680
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520676853202208,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 6438322176,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          },
+          {
+            "pid": 438085,
+            "used_gpu_memory_bytes": 5196742656
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520677470153319,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 7509966848,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162447360
+          },
+          {
+            "pid": 438085,
+            "used_gpu_memory_bytes": 6268387328
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520678051835227,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 7512915968,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 163299328
+          },
+          {
+            "pid": 438085,
+            "used_gpu_memory_bytes": 6270484480
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520678552276151,
+        "gpu_utilization_percent": 56,
+        "memory_used_bytes": 7512915968,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 163299328
+          },
+          {
+            "pid": 438085,
+            "used_gpu_memory_bytes": 6270484480
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520678919084550,
+        "gpu_utilization_percent": 74,
+        "memory_used_bytes": 7512784896,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 163168256
+          },
+          {
+            "pid": 438085,
+            "used_gpu_memory_bytes": 6270484480
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "scope": "NVML GPU 0, includes unrelated co-resident processes; no exclusivity claim"
+  }
+}

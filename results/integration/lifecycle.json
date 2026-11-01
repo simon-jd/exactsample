@@ -1,0 +1,1563 @@
+{
+  "schema": "exactsample.vllm_lifecycle.v1",
+  "state": "passed",
+  "started_at": "2026-11-01T08:10:47.802547+00:00",
+  "arguments": {
+    "target": "Qwen/Qwen3-1.7B@70d244cc86cc",
+    "draft": "Qwen/Qwen3-0.6B@c1899de289a0",
+    "output": "results/integration/lifecycle.json",
+    "kv_cache_memory_bytes": 134217728,
+    "prompt_tokens": 120,
+    "max_tokens": 96
+  },
+  "scope": "public abort and genuine scheduler preemption under small fixed KV; observation-only worker hooks",
+  "prompt_token_ids": [
+    74785,
+    279,
+    2613,
+    14796,
+    323,
+    1181,
+    12408,
+    304,
+    264,
+    19300,
+    11,
+    4285,
+    3364,
+    13,
+    60785,
+    279,
+    2613,
+    14796,
+    323,
+    1181,
+    12408,
+    304,
+    264,
+    19300,
+    11,
+    4285,
+    3364,
+    13,
+    60785,
+    279,
+    2613,
+    14796,
+    323,
+    1181,
+    12408,
+    304,
+    264,
+    19300,
+    11,
+    4285,
+    3364,
+    13,
+    60785,
+    279,
+    2613,
+    14796,
+    323,
+    1181,
+    12408,
+    304,
+    264,
+    19300,
+    11,
+    4285,
+    3364,
+    13,
+    60785,
+    279,
+    2613,
+    14796,
+    323,
+    1181,
+    12408,
+    304,
+    264,
+    19300,
+    11,
+    4285,
+    3364,
+    13,
+    60785,
+    279,
+    2613,
+    14796,
+    323,
+    1181,
+    12408,
+    304,
+    264,
+    19300,
+    11,
+    4285,
+    3364,
+    13,
+    60785,
+    279,
+    2613,
+    14796,
+    323,
+    1181,
+    12408,
+    304,
+    264,
+    19300,
+    11,
+    4285,
+    3364,
+    13,
+    60785,
+    279,
+    2613,
+    14796,
+    323,
+    1181,
+    12408,
+    304,
+    264,
+    19300,
+    11,
+    4285,
+    3364,
+    13,
+    60785,
+    279,
+    2613,
+    14796,
+    323,
+    1181,
+    12408,
+    304
+  ],
+  "model_runner_sha256": "e41bcebcfcce80f4a7c2d9eace8f1714da935be657b012252aabc8d17946d415",
+  "observer": [
+    {
+      "installed": true,
+      "scope": "CPU observations only; public low KV causes scheduler preemption"
+    }
+  ],
+  "cancelled": {
+    "request_id": "cancel-me",
+    "seed": null,
+    "token_ids": [
+      264
+    ],
+    "abort_called": true,
+    "tokens_at_abort": [
+      264
+    ],
+    "finish_reason": "abort",
+    "stop_reason": null
+  },
+  "reused_external_id": {
+    "request_id": "cancel-me",
+    "seed": 9191,
+    "token_ids": [
+      264,
+      19300,
+      11,
+      4285
+    ],
+    "abort_called": false,
+    "finish_reason": "length",
+    "stop_reason": null
+  },
+  "stress": [
+    {
+      "request_id": "stress-0",
+      "seed": null,
+      "token_ids": [
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181
+      ],
+      "abort_called": false,
+      "finish_reason": "length",
+      "stop_reason": null
+    },
+    {
+      "request_id": "stress-1",
+      "seed": null,
+      "token_ids": [
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181
+      ],
+      "abort_called": false,
+      "finish_reason": "length",
+      "stop_reason": null
+    },
+    {
+      "request_id": "stress-2",
+      "seed": null,
+      "token_ids": [
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        382,
+        32313,
+        11,
+        279,
+        1196,
+        6801,
+        264,
+        3364,
+        911,
+        264,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        11,
+        714,
+        807,
+        3003,
+        11504,
+        279,
+        1681,
+        5248,
+        3039,
+        13,
+        6771,
+        752,
+        1281,
+        2704,
+        358,
+        3535,
+        279,
+        3239,
+        12440,
+        13,
+        2379,
+        1366,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        429,
+        16555,
+        264,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        13,
+        576,
+        53415,
+        2578,
+        387,
+        264,
+        16523,
+        11,
+        714,
+        358,
+        1265,
+        5244,
+        389
+      ],
+      "abort_called": false,
+      "finish_reason": "length",
+      "stop_reason": null
+    },
+    {
+      "request_id": "stress-3",
+      "seed": null,
+      "token_ids": [
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181,
+        12408,
+        304,
+        264,
+        19300,
+        11,
+        4285,
+        3364,
+        13,
+        60785,
+        279,
+        2613,
+        14796,
+        323,
+        1181
+      ],
+      "abort_called": false,
+      "finish_reason": "length",
+      "stop_reason": null
+    }
+  ],
+  "drain": {
+    "request_id": "drain-cleanup",
+    "seed": 1,
+    "token_ids": [
+      279
+    ],
+    "abort_called": false,
+    "finish_reason": "length",
+    "stop_reason": null
+  },
+  "lifecycle": {
+    "events": [
+      {
+        "event": "register",
+        "request_id": "cancel-me-96728b94",
+        "slot": 3,
+        "requested_seed": null,
+        "step": 0,
+        "prior_effective_seed": null,
+        "native_seed": 900450186894289455,
+        "effective_seed": 900450186894289455
+      },
+      {
+        "event": "scheduler_cleanup",
+        "preempted": [],
+        "finished": [
+          "cancel-me-96728b94"
+        ],
+        "before_seeds": {
+          "cancel-me-96728b94": 900450186894289455
+        },
+        "after_seeds": {}
+      },
+      {
+        "event": "register",
+        "request_id": "cancel-me-84fe3ee1",
+        "slot": 3,
+        "requested_seed": 9191,
+        "step": 3,
+        "prior_effective_seed": null,
+        "native_seed": 9191,
+        "effective_seed": 9191
+      },
+      {
+        "event": "scheduler_cleanup",
+        "preempted": [],
+        "finished": [
+          "cancel-me-84fe3ee1"
+        ],
+        "before_seeds": {
+          "cancel-me-84fe3ee1": 9191
+        },
+        "after_seeds": {}
+      },
+      {
+        "event": "register",
+        "request_id": "stress-0-bd8b28d3",
+        "slot": 3,
+        "requested_seed": null,
+        "step": 6,
+        "prior_effective_seed": null,
+        "native_seed": 3969543146641149120,
+        "effective_seed": 3969543146641149120
+      },
+      {
+        "event": "register",
+        "request_id": "stress-1-bcb672cc",
+        "slot": 2,
+        "requested_seed": null,
+        "step": 6,
+        "prior_effective_seed": null,
+        "native_seed": 1895649597198586619,
+        "effective_seed": 1895649597198586619
+      },
+      {
+        "event": "register",
+        "request_id": "stress-2-9172dd9b",
+        "slot": 1,
+        "requested_seed": null,
+        "step": 6,
+        "prior_effective_seed": null,
+        "native_seed": 827948490035658087,
+        "effective_seed": 827948490035658087
+      },
+      {
+        "event": "register",
+        "request_id": "stress-3-8365e7ae",
+        "slot": 0,
+        "requested_seed": null,
+        "step": 7,
+        "prior_effective_seed": null,
+        "native_seed": -1408320422220276013,
+        "effective_seed": -1408320422220276013
+      },
+      {
+        "event": "scheduler_cleanup",
+        "preempted": [
+          "stress-3-8365e7ae"
+        ],
+        "finished": [],
+        "before_seeds": {
+          "stress-0-bd8b28d3": 3969543146641149120,
+          "stress-1-bcb672cc": 1895649597198586619,
+          "stress-2-9172dd9b": 827948490035658087,
+          "stress-3-8365e7ae": -1408320422220276013
+        },
+        "after_seeds": {
+          "stress-0-bd8b28d3": 3969543146641149120,
+          "stress-1-bcb672cc": 1895649597198586619,
+          "stress-2-9172dd9b": 827948490035658087,
+          "stress-3-8365e7ae": -1408320422220276013
+        }
+      },
+      {
+        "event": "register",
+        "request_id": "stress-3-8365e7ae",
+        "slot": 0,
+        "requested_seed": null,
+        "step": 9,
+        "prior_effective_seed": -1408320422220276013,
+        "native_seed": 2691271404617651954,
+        "effective_seed": -1408320422220276013
+      },
+      {
+        "event": "scheduler_cleanup",
+        "preempted": [
+          "stress-3-8365e7ae"
+        ],
+        "finished": [],
+        "before_seeds": {
+          "stress-0-bd8b28d3": 3969543146641149120,
+          "stress-1-bcb672cc": 1895649597198586619,
+          "stress-2-9172dd9b": 827948490035658087,
+          "stress-3-8365e7ae": -1408320422220276013
+        },
+        "after_seeds": {
+          "stress-0-bd8b28d3": 3969543146641149120,
+          "stress-1-bcb672cc": 1895649597198586619,
+          "stress-2-9172dd9b": 827948490035658087,
+          "stress-3-8365e7ae": -1408320422220276013
+        }
+      },
+      {
+        "event": "scheduler_cleanup",
+        "preempted": [
+          "stress-2-9172dd9b"
+        ],
+        "finished": [],
+        "before_seeds": {
+          "stress-0-bd8b28d3": 3969543146641149120,
+          "stress-1-bcb672cc": 1895649597198586619,
+          "stress-2-9172dd9b": 827948490035658087,
+          "stress-3-8365e7ae": -1408320422220276013
+        },
+        "after_seeds": {
+          "stress-0-bd8b28d3": 3969543146641149120,
+          "stress-1-bcb672cc": 1895649597198586619,
+          "stress-2-9172dd9b": 827948490035658087,
+          "stress-3-8365e7ae": -1408320422220276013
+        }
+      },
+      {
+        "event": "scheduler_cleanup",
+        "preempted": [],
+        "finished": [
+          "stress-0-bd8b28d3",
+          "stress-1-bcb672cc"
+        ],
+        "before_seeds": {
+          "stress-0-bd8b28d3": 3969543146641149120,
+          "stress-1-bcb672cc": 1895649597198586619,
+          "stress-2-9172dd9b": 827948490035658087,
+          "stress-3-8365e7ae": -1408320422220276013
+        },
+        "after_seeds": {
+          "stress-2-9172dd9b": 827948490035658087,
+          "stress-3-8365e7ae": -1408320422220276013
+        }
+      },
+      {
+        "event": "register",
+        "request_id": "stress-2-9172dd9b",
+        "slot": 2,
+        "requested_seed": null,
+        "step": 27,
+        "prior_effective_seed": 827948490035658087,
+        "native_seed": -1151312763198686633,
+        "effective_seed": 827948490035658087
+      },
+      {
+        "event": "register",
+        "request_id": "stress-3-8365e7ae",
+        "slot": 3,
+        "requested_seed": null,
+        "step": 27,
+        "prior_effective_seed": -1408320422220276013,
+        "native_seed": 7226936298635050456,
+        "effective_seed": -1408320422220276013
+      },
+      {
+        "event": "scheduler_cleanup",
+        "preempted": [],
+        "finished": [
+          "stress-2-9172dd9b"
+        ],
+        "before_seeds": {
+          "stress-2-9172dd9b": 827948490035658087,
+          "stress-3-8365e7ae": -1408320422220276013
+        },
+        "after_seeds": {
+          "stress-3-8365e7ae": -1408320422220276013
+        }
+      },
+      {
+        "event": "scheduler_cleanup",
+        "preempted": [],
+        "finished": [
+          "stress-3-8365e7ae"
+        ],
+        "before_seeds": {
+          "stress-3-8365e7ae": -1408320422220276013
+        },
+        "after_seeds": {}
+      },
+      {
+        "event": "register",
+        "request_id": "drain-cleanup-9a310ac7",
+        "slot": 3,
+        "requested_seed": 1,
+        "step": 48,
+        "prior_effective_seed": null,
+        "native_seed": 1,
+        "effective_seed": 1
+      }
+    ],
+    "remaining_seeds": {
+      "drain-cleanup-9a310ac7": 1
+    }
+  },
+  "preempted_request_ids": [
+    "stress-2-9172dd9b",
+    "stress-3-8365e7ae"
+  ],
+  "resumed_request_ids": [
+    "stress-2-9172dd9b",
+    "stress-3-8365e7ae"
+  ],
+  "native_seed_changed_on_resume": {
+    "stress-2-9172dd9b": true,
+    "stress-3-8365e7ae": true
+  },
+  "cancelled_and_reused_admissions": [
+    {
+      "event": "register",
+      "request_id": "cancel-me-96728b94",
+      "slot": 3,
+      "requested_seed": null,
+      "step": 0,
+      "prior_effective_seed": null,
+      "native_seed": 900450186894289455,
+      "effective_seed": 900450186894289455
+    },
+    {
+      "event": "register",
+      "request_id": "cancel-me-84fe3ee1",
+      "slot": 3,
+      "requested_seed": 9191,
+      "step": 3,
+      "prior_effective_seed": null,
+      "native_seed": 9191,
+      "effective_seed": 9191
+    }
+  ],
+  "verified_resumed_steps": {
+    "stress-2-9172dd9b": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44
+    ],
+    "stress-3-8365e7ae": [
+      9,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47
+    ]
+  },
+  "isolated_recompute_comparisons": [
+    {
+      "internal_request_id": "stress-2-9172dd9b",
+      "isolated": {
+        "request_id": "isolated-0",
+        "seed": 827948490035658087,
+        "token_ids": [
+          264,
+          19300,
+          11,
+          4285,
+          3364,
+          13,
+          60785,
+          279,
+          2613,
+          14796,
+          323,
+          1181,
+          12408,
+          304,
+          264,
+          19300,
+          11,
+          4285,
+          3364,
+          13,
+          60785,
+          279,
+          2613,
+          14796,
+          323,
+          1181,
+          12408,
+          304,
+          264,
+          19300,
+          11,
+          4285,
+          3364,
+          382,
+          32313,
+          11,
+          279,
+          1196,
+          6801,
+          264,
+          3364,
+          911,
+          264,
+          2613,
+          14796,
+          323,
+          1181,
+          12408,
+          11,
+          714,
+          807,
+          3003,
+          11504,
+          279,
+          1681,
+          5248,
+          3039,
+          13,
+          6771,
+          752,
+          1281,
+          2704,
+          358,
+          3535,
+          279,
+          3239,
+          12440,
+          13,
+          2379,
+          1366,
+          264,
+          19300,
+          11,
+          4285,
+          3364,
+          429,
+          16555,
+          264,
+          2613,
+          14796,
+          323,
+          1181,
+          12408,
+          13,
+          576,
+          53415,
+          2578,
+          387,
+          264,
+          16523,
+          11,
+          714,
+          358,
+          1265,
+          5244,
+          389
+        ],
+        "abort_called": false,
+        "finish_reason": "length",
+        "stop_reason": null
+      },
+      "tokens_equal": true,
+      "first_divergence": null
+    },
+    {
+      "internal_request_id": "stress-3-8365e7ae",
+      "isolated": {
+        "request_id": "isolated-1",
+        "seed": -1408320422220276013,
+        "token_ids": [
+          264,
+          19300,
+          11,
+          4285,
+          3364,
+          13,
+          60785,
+          279,
+          2613,
+          14796,
+          323,
+          1181,
+          12408,
+          304,
+          264,
+          19300,
+          11,
+          4285,
+          3364,
+          13,
+          60785,
+          279,
+          2613,
+          14796,
+          323,
+          1181,
+          12408,
+          304,
+          264,
+          19300,
+          11,
+          4285,
+          3364,
+          13,
+          60785,
+          279,
+          2613,
+          14796,
+          323,
+          1181,
+          12408,
+          304,
+          264,
+          19300,
+          11,
+          4285,
+          3364,
+          13,
+          60785,
+          279,
+          2613,
+          14796,
+          323,
+          1181,
+          12408,
+          304,
+          264,
+          19300,
+          11,
+          4285,
+          3364,
+          13,
+          60785,
+          279,
+          2613,
+          14796,
+          323,
+          1181,
+          12408,
+          304,
+          264,
+          19300,
+          11,
+          4285,
+          3364,
+          13,
+          60785,
+          279,
+          2613,
+          14796,
+          323,
+          1181,
+          12408,
+          304,
+          264,
+          19300,
+          11,
+          4285,
+          3364,
+          13,
+          60785,
+          279,
+          2613,
+          14796,
+          323,
+          1181
+        ],
+        "abort_called": false,
+        "finish_reason": "length",
+        "stop_reason": null
+      },
+      "tokens_equal": true,
+      "first_divergence": null
+    }
+  ],
+  "gpu_observation": {
+    "interval_seconds": 0.5,
+    "samples": [
+      {
+        "time_ns": 1793520647819829363,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233321984,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520648320546614,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233321984,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520648831811279,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233321984,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162643968
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520649334469602,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233256448,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520649842352168,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233256448,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520650372463176,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233256448,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520650874397369,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233256448,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520651378422967,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233256448,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520651899913804,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233256448,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520652510098695,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233256448,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520653025472227,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233256448,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520653742290797,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233256448,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520654246604691,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1233256448,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520654747024692,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1667432448,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 425721856
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520655247475709,
+        "gpu_utilization_percent": 0,
+        "memory_used_bytes": 1734541312,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 492830720
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520655747920617,
+        "gpu_utilization_percent": 17,
+        "memory_used_bytes": 5899485184,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 4657774592
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520656248469686,
+        "gpu_utilization_percent": 18,
+        "memory_used_bytes": 5899485184,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 4657774592
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520656748950203,
+        "gpu_utilization_percent": 70,
+        "memory_used_bytes": 7367491584,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 6125780992
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520657249387950,
+        "gpu_utilization_percent": 16,
+        "memory_used_bytes": 6411190272,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5169479680
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520657749803482,
+        "gpu_utilization_percent": 40,
+        "memory_used_bytes": 6457327616,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5215617024
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520658250217629,
+        "gpu_utilization_percent": 17,
+        "memory_used_bytes": 6591545344,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5349834752
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520658750659072,
+        "gpu_utilization_percent": 85,
+        "memory_used_bytes": 6593642496,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162578432
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5351931904
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520659251030604,
+        "gpu_utilization_percent": 77,
+        "memory_used_bytes": 6592856064,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 161792000
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5351931904
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520659751411434,
+        "gpu_utilization_percent": 75,
+        "memory_used_bytes": 6592856064,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 161792000
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5351931904
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520660251804096,
+        "gpu_utilization_percent": 78,
+        "memory_used_bytes": 6592856064,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 161792000
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5351931904
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520660752193857,
+        "gpu_utilization_percent": 73,
+        "memory_used_bytes": 6592856064,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 161792000
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5351931904
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520661252627447,
+        "gpu_utilization_percent": 47,
+        "memory_used_bytes": 6592856064,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 161792000
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5351931904
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520661753207053,
+        "gpu_utilization_percent": 78,
+        "memory_used_bytes": 6592856064,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 161792000
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5351931904
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520662253693369,
+        "gpu_utilization_percent": 76,
+        "memory_used_bytes": 6592790528,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 161726464
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5351931904
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520662754091026,
+        "gpu_utilization_percent": 68,
+        "memory_used_bytes": 6594035712,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162971648
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5351931904
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520663254467932,
+        "gpu_utilization_percent": 2,
+        "memory_used_bytes": 6434652160,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162971648
+          },
+          {
+            "pid": 436684,
+            "used_gpu_memory_bytes": 5192548352
+          }
+        ]
+      },
+      {
+        "time_ns": 1793520663735826796,
+        "gpu_utilization_percent": 43,
+        "memory_used_bytes": 1233649664,
+        "processes": [
+          {
+            "pid": 1951965,
+            "used_gpu_memory_bytes": 162971648
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "scope": "NVML GPU 0, includes unrelated co-resident processes; no exclusivity claim"
+  }
+}
