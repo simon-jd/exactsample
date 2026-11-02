@@ -150,17 +150,21 @@ case, which uses a small KV cache. There vLLM's scheduler preempted and
 recomputed four of the eight probes: two seeded, and both unseeded. A hook hashes every probe's logits row before any sampling
 code runs. A token difference is therefore attributed to the model when that
 row already differed from the alone run, and to the sampler when it was
-identical. Count of probes with the same tokens as alone:
+identical. With `VLLM_BATCH_INVARIANT=1`, the count of probes with the same
+tokens as alone:
 
-| case | exactsample | vLLM | exactsample, `VLLM_BATCH_INVARIANT=1` | vLLM, `VLLM_BATCH_INVARIANT=1` |
-|---|---:|---:|---:|---:|
-| 15 others, probes first | 5/6 | 4/6 | 6/6 | 6/6 |
-| 31 others, probes last | 4/6 | 3/6 | 6/6 | 6/6 |
-| joining mid-generation | 6/6 | 5/6 | 6/6 | 6/6 |
-| small KV cache, 4 of 8 preempted (6 seeded, 2 unseeded) | 8/8 | 2/8 | 8/8 | 6/8 |
+| case | exactsample | vLLM |
+|---|---:|---:|
+| 15 others, probes first | 6/6 | 6/6 |
+| 31 others, probes last | 6/6 | 6/6 |
+| joining mid-generation | 6/6 | 6/6 |
+| small KV cache, 4 of 8 preempted (6 seeded, 2 unseeded) | 8/8 | 6/8 |
 
 - **Without batch-invariant kernels**, no probe's logits match its alone run
-  in any mixed case. Every token difference, for either sampler, is
+  in any mixed case, for either sampler, so those runs measure the model's
+  batch dependence (noise in the logits), not the samplers; their token
+  counts, from one run of 6 to 8 probes per case, are in
+  `results/determinism/summary.json`. Every token difference there is
   attributed to the logits. exactsample's sampling cannot remove differences
   that the model's batch-dependent logits create.
 - **With `VLLM_BATCH_INVARIANT=1`**, every probe's logits match bitwise in
