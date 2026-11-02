@@ -142,8 +142,9 @@ time (CUDA events over 100 back-to-back calls, so launch overhead included)
 and a cold call (median of 30 calls, each after writing 256 MB to evict the
 72 MB L2). The tables give the median GPU time over runs, its interquartile
 range, and the cold-call median in brackets. Run-to-run spread is small: the
-interquartile range is within 1% of the median in 69 of 72 cells and within
-10% in all. Clocks were not locked (no administrator rights on the machine,
+interquartile range is within 1% of the median in 69 of 72 cells and 1.55% in
+one more; in the other two it is 10.03% (exactsample, 32 x 5, and FlashInfer,
+1 x 5, both with Qwen3's settings). Clocks were not locked (no administrator rights on the machine,
 whose GPU also drives a desktop); the SM clock at the start of each run,
 recorded in `results/sampler/runs/clocks.csv`, was 2,805 or 2,820 MHz in 39
 of the 40 runs (one sample caught the GPU still at its 210 MHz idle clock).

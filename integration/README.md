@@ -118,7 +118,7 @@ at T=1.0 (exactsample against vLLM). In the other cells the two
 ranges overlap. The ranges are wide: one repetition's c=1 cell averaged 29.0 ms
 per step. The earlier bridge took 25.6 to 33.6 ms per step, 21 to 29% more. TPOT also depends on how many drafts
 are accepted, and that differs between the two samplers because they sample
-different sequences: 2.45 against 2.71 tokens per step at c=1 with top-k/top-p,
+different sequences: 2.71 against 2.45 tokens per step at c=1 with top-k/top-p,
 for example. Both accept a one-hot draft with probability p(draft), so those
 differences come from the sampled text, not the method. The time per step is
 the comparable measure (`results/e2e/timed/summary.json`).
