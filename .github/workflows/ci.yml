@@ -13,3 +13,20 @@ jobs:
           python-version: "3.12"
       - run: pip install -e '.[test]'
       - run: python -m pytest -q
+  cuda-compile:
+    # Compiles the kernels and the exhaustive Gumbel check with the local
+    # build's flags (scripts/compile_cuda.sh); nothing runs on a GPU, and the
+    # PyTorch operator (csrc/bindings.cpp) is not built.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the CUDA 13.2 compiler (the version the results were built with)
+        run: |
+          wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends cuda-nvcc-13-2=13.2.86-1 cuda-crt-13-2=13.2.86-1 \
+            cuda-cudart-dev-13-2=13.2.86-1 cuda-cccl-13-2=13.2.86-1
+          echo /usr/local/cuda-13.2/bin >> "$GITHUB_PATH"
+      - run: nvcc --version
+      - run: EXACTSAMPLE_BUILD_JOBS=4 bash scripts/compile_cuda.sh
