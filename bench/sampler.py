@@ -12,12 +12,13 @@ the same torch op. Reported per call:
            are right after the LM head; includes host launch overhead;
   cold_us  median event time of one call after the L2 has been flushed.
 
-    python bench/sampler.py --impl exactsample --output results/raw/sampler/exactsample.jsonl
-    python bench/sampler.py --impl vllm_mrv2 --output results/raw/sampler/vllm.jsonl
-    python bench/sampler.py --impl flashinfer:probs --output results/raw/sampler/flashinfer-probs.jsonl
+    python bench/sampler.py --impl exactsample --run 1 --output OUT/exactsample-1.jsonl
+    python bench/sampler.py --impl flashinfer:probs --run 1 --output OUT/flashinfer-probs-1.jsonl
 
-bench/run_matrix.sh repeats every implementation, interleaved, and
-bench/summarize.py reports the median and interquartile range over runs.
+The logits come from --capture (bench/capture_logits.py's output).
+bench/run_sampler.sh repeats every implementation, interleaved, which is how
+results/sampler/runs was made, and bench/summarize.py reports the median and
+interquartile range over runs.
 """
 import argparse
 import json

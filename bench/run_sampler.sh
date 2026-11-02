@@ -6,7 +6,7 @@
 # and the environment (env.json); bench/summarize.py OUT reports the median
 # and interquartile range over runs.
 #
-#   bash bench/run_sampler.sh results/raw/sampler/<name>
+#   bash bench/run_sampler.sh results/sampler/<name>    (results/sampler/runs is the committed series)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT=${1:?usage: run_sampler.sh OUTPUT_DIR}

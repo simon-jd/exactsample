@@ -8,8 +8,15 @@
 #     bash bench/run_vllm_e2e.sh <out dir> <reps> bench/vllm_e2e_plan.sh [<extra run arguments>]
 #
 # Arms: off = EXACTSAMPLE_DECODE=0, on = 1, old = on with the package in
-# E2E_OLD_PYTHONPATH first on PYTHONPATH. Relative paths are taken from the
-# repository root; existing run files are kept, so an interrupted series resumes.
+# E2E_OLD_PYTHONPATH first on PYTHONPATH. Plans with an old arm need it: the
+# python/ directory of a checkout of fae7b39, the bridge before the host-sync
+# change (3dec1b3 changed only python/exactsample/vllm_bridge.py; run files
+# record the bridge's sha256, 732c7686... for fae7b39), with
+# EXACTSAMPLE_LIBRARY set to the current build's exactsample_cuda.so:
+#   git worktree add .runtime/e2e-old fae7b39
+#   E2E_OLD_PYTHONPATH=.runtime/e2e-old/python EXACTSAMPLE_LIBRARY=$PWD/python/exactsample/exactsample_cuda.so
+# Relative paths are taken from the repository root; existing run files are
+# kept, so an interrupted series resumes.
 set -euo pipefail
 script=$(realpath "$0")
 cd "$(dirname "$script")/.."

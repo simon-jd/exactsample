@@ -1,6 +1,6 @@
 """Tables from bench/run_sampler.sh output: median GPU time per call over runs.
 
-    python bench/summarize.py results/raw/sampler/<name> [--json results/sampler/summary.json]
+    python bench/summarize.py results/sampler/runs [--json results/sampler/summary.json]
 
 For each cell and implementation, reports the median and interquartile range
 over runs of gpu_us (summed kernel time per call), call_us (event time per
