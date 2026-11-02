@@ -5,6 +5,7 @@
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 
 namespace exactsample {
@@ -44,8 +45,10 @@ struct RowState {
   int part;    // which kernel finishes the row (fused.cuh, Part)
   int gather;  // candidates row_hist and row_gather prepare (fused.cuh, Gather)
   double runner_up;  // a valid logit other than the greedy token's, near the top, and its ID (INT_MAX if none)
-  int runner_up_id, unused;
+  int runner_up_id, pad;  // pad: the alignment padding, named so that row_stats sets every byte
 };
+static_assert(offsetof(RowState, runner_up) == 40 && offsetof(RowState, pad) == 52 && sizeof(RowState) == 56,
+              "RowState layout: pad is padding");
 __host__ __device__ inline RowState* row_states(const Arguments& a) {
   return reinterpret_cast<RowState*>(a.workspace + 8 + a.rows * sizeof(RowResult));
 }

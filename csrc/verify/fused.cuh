@@ -19,6 +19,8 @@
 #include "device.cuh"
 #include <algorithm>
 #include <climits>
+#include <cstddef>
+#include <type_traits>
 #include <cub/block/block_radix_sort.cuh>
 
 namespace exactsample {
@@ -263,7 +265,11 @@ __host__ __device__ inline int slice_count(int64_t rows) {
   return int(rows >= 512 ? 1 : rows >= 16 ? 512 / rows : MAX_SLICES);
 }
 struct StatsPart { double maximum, qmax, runner_up; int greedy, runner_up_id, valid, bad, qvalid, qbad; };
-struct DrawPart { Pick<float> pick; int unused; double sum, err; int pruned, unused2; };
+// pad0 and pad1 are the alignment padding, named so that the parts, written
+// whole by row_scan and row_hist, have every byte set.
+struct DrawPart { Pick<float> pick; int pad0; double sum, err; int pruned, pad1; };
+static_assert(sizeof(Pick<float>) == 20 && offsetof(DrawPart, sum) == 24 && offsetof(DrawPart, pruned) == 40 &&
+              sizeof(DrawPart) == 48, "DrawPart layout: pad0 and pad1 are padding");
 static_assert(sizeof(RowState) + MAX_SLICES * (sizeof(StatsPart) + sizeof(DrawPart)) + CANDIDATES * sizeof(int) +
               (HIST_BINS + 4) * sizeof(unsigned) + 2 * sizeof(unsigned) <= FUSED_ROW_BYTES, "fused workspace layout");
 __device__ inline StatsPart* stats_parts(const Arguments& a) {
@@ -775,105 +781,134 @@ __global__ void __launch_bounds__(SCAN_THREADS, 4) row_gather(Arguments a) {
   }, first, last);
 }
 
-// The arguments are __grid_constant__: the kernel passes them by reference to
-// code that is not inlined, which would otherwise copy all 736 bytes to local
-// memory in every thread before the early exit (2.4 us per launch).
-template <DType D, bool VECTOR, int PART>
-__global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Arguments a) {
-  using W = typename In<D>::W;
+// Tokens that come after `cut` in (logit desc, id asc) order; every token when !on.
+template <class Key> struct After {
+  bool on;
+  Cut<Key> cut;
+  __device__ bool admits(Key k, int t) const { return !on || !cut.keeps(k, t); }
+};
+// Reduction operators of fused_rows.
+struct PlusOp { template <class T> __device__ T operator()(T x, T y) const { return x + y; } };
+struct MinOp { __device__ int operator()(int x, int y) const { return x < y ? x : y; } };
+struct DDOp { __device__ DD operator()(DD x, DD y) const { return dd_add(x, y); } };
+struct Best64Op { __device__ Best<double> operator()(Best<double> x, Best<double> y) const { return best_of(x, y); } };
+__device__ inline Best<double> no_best64() { return {-INFINITY, INT_MAX}; }
+
+// Shared memory of fused_rows: what both kernels use, and what only the
+// list (LIST_PART) or only the full and sliced paths use.
+struct ListShared {
+  int s_sorted[LIST_MAX];
+  double s_p[LIST_MAX];
+  int s_n2, s_pick_id, s_defer, s_settled;  // warp 0's results, for the whole block
+};
+struct FullShared {
+  Best<double> s_best64[WARPS];
+  Pick<float> s_pick32[WARPS];
+  DD s_scan[THREADS];
+  float s_floor;
+  DrawPart s_merged;
+};
+template <DType D, int PART> struct RowShared : std::conditional_t<PART == LIST_PART, ListShared, FullShared> {
   using Key = typename In<D>::Key;
-  constexpr int KEY_BITS = int(sizeof(Key) * 8);
-  __shared__ int s_int[WARPS];
-  __shared__ double s_double[WARPS];
-  __shared__ W s_val[WARPS];
-  __shared__ Best<W> s_best[WARPS];
-  __shared__ Best<double> s_best64[WARPS];
-  __shared__ Pick<float> s_pick32[WARPS];
-  __shared__ Pick<double> s_pick64[WARPS];
-  __shared__ DD s_dd[WARPS];
-  __shared__ unsigned s_hist[256];
   using Sort = cub::BlockRadixSort<unsigned long long, THREADS, 4>;
   struct Buffer { Key key[GATHER]; int id[GATHER]; };
-  __shared__ union Space { Buffer buf; typename Sort::TempStorage sort; } s_space;
-  Key* const s_key = s_space.buf.key;
-  int* const s_id = s_space.buf.id;
-  __shared__ int s_sorted[LIST_MAX];
-  __shared__ double s_p[LIST_MAX];
-  __shared__ Key s_keys[WARPS];
-  __shared__ DD s_scan[THREADS];
-  __shared__ int s_a, s_b, s_n;
-  __shared__ float s_floor;
+  int s_int[WARPS];
+  double s_double[WARPS];
+  DD s_dd[WARPS];
+  unsigned s_hist[256];
+  union Space { Buffer buf; typename Sort::TempStorage sort; } s_space;  // candidates, or the sort's storage
+  Key s_keys[WARPS];
+  int s_a, s_b, s_n;
+};
 
-  const int row = blockIdx.y, tid = threadIdx.x;
-  if (*reinterpret_cast<const int*>(a.workspace)) return;  // malformed offsets
-  {
-    // Leave rows of the other kernel at once (before the request lookup and
-    // parameter loads): most launches of this large kernel have nothing to do.
-    // A stale state (for a request that failed validation) only falls through
-    // to the checks below.
-    const int part = row_states(a)[row].part;
-    if (PART == LIST_PART ? part != LIST_PART : part != FULL_PART && part != SLICED_PART) return;
-  }
-  const int req = request_of(a, row);
-  if (a.status[req * a.status_s] != OK || a.path[req * a.path_s] != FUSED) return;
-  auto* results = reinterpret_cast<RowResult*>(a.workspace + 8);
-  const int begin = int(at(a.cu_rows, req)), end = int(at(a.cu_rows, req + 1));
-  const bool draft_row = row + 1 < end, coupled = a.mode == 1;
-  const int draft_id = draft_row ? int(a.draft_ids[req * a.draft_s0 + (row - begin) * a.draft_s1]) : -1;
-  const bool full_q = draft_row && at(a.draft_kind, req) == 1;
-  const bool verify = draft_row && !coupled;  // this row makes a ratio test
-  const double temperature = at(a.temperature, req), top_p = at(a.top_p, req), min_p = at(a.min_p, req);
-  const int64_t top_k = at(a.top_k, req);
-  const uint64_t seed = uint64_t(at(a.seed, req));
-  const uint32_t stream = uint32_t(at(a.stream, req)), position = uint32_t(at(a.position, row));
-  const int vocab = int(a.vocab);
-  const RowView<D, VECTOR> view(a.target, row, vocab), qview(a.draft, row, vocab);
-  const int groups = view.groups;
-  auto plus = [](auto x, auto y) { return x + y; };
-  auto mini = [](int x, int y) { return x < y ? x : y; };
-  auto dd_op = [](DD x, DD y) { return dd_add(x, y); };
-  auto best64_op = [](Best<double> x, Best<double> y) { return best_of(x, y); };
-  const Best<double> no_best64{-INFINITY, INT_MAX};
+// One row of fused_rows, run by the whole block: the request's parameters,
+// the row's state from row_stats and its result, and the steps that finish
+// the row. Every member function is inlined into the kernel.
+template <DType D, bool VECTOR, int PART> struct RowWork {
+  using W = typename In<D>::W;
+  using Key = typename In<D>::Key;
+  using Sort = typename RowShared<D, PART>::Sort;
+  static constexpr int KEY_BITS = int(sizeof(Key) * 8);
+  static constexpr int PER_LANE = LIST_MAX / 32;  // list entries per lane of warp 0
+  RowShared<D, PART>& sh;
+  Key* const s_key;  // candidate buffer, GATHER entries
+  int* const s_id;
+  const Arguments& a;
+  const int row, tid, req, begin, end;
+  const bool draft_row, coupled;
+  const int draft_id;
+  const bool full_q, verify;  // verify: this row makes a ratio test
+  const double temperature, top_p, min_p;
+  const int64_t top_k;
+  const uint64_t seed;
+  const uint32_t stream, position;
+  const int vocab;
+  const RowView<D, VECTOR> view, qview;
+  const int groups;
+  const RowState state;
+  const W maximum, qmax;
+  const int greedy, valid;
+  const bool failed;
+  const int n_keep;
+  RowResult result;
+  // Actual proposal distribution q for full-q draft rows: q at the draft
+  // token is wq_draft / sq, and esq bounds the error of sq.
+  double wq_draft = 0, sq = 0, esq = 0;
+  bool sq_exact = false;
+  // Positive temperature (begin_positive).
+  float inv_t = 0, ln_min_p = 0, min_p_tol = 0;
+  bool slow_x = false;
+  double u_accept = 0;
+  // The top-k (and, once found, top-p) cut of the kept set, and the sum of
+  // the kept weights with its error bound.
+  Cut<Key> cut{false, 0, 0};
+  double sp = 0, esp = 0;
+  bool sp_known = false, sp_exact = false;
+
+  __device__ __forceinline__ RowWork(const Arguments& a_, RowShared<D, PART>& sh_, int row_, int req_)
+      : sh(sh_), s_key(sh_.s_space.buf.key), s_id(sh_.s_space.buf.id), a(a_), row(row_), tid(threadIdx.x),
+        req(req_), begin(int(at(a_.cu_rows, req_))), end(int(at(a_.cu_rows, req_ + 1))), draft_row(row_ + 1 < end),
+        coupled(a_.mode == 1),
+        draft_id(draft_row ? int(a_.draft_ids[req_ * a_.draft_s0 + (row_ - begin) * a_.draft_s1]) : -1),
+        full_q(draft_row && at(a_.draft_kind, req_) == 1), verify(draft_row && !coupled),
+        temperature(at(a_.temperature, req_)), top_p(at(a_.top_p, req_)), min_p(at(a_.min_p, req_)),
+        top_k(at(a_.top_k, req_)), seed(uint64_t(at(a_.seed, req_))), stream(uint32_t(at(a_.stream, req_))),
+        position(uint32_t(at(a_.position, row_))), vocab(int(a_.vocab)), view(a_.target, row_, vocab),
+        qview(a_.draft, row_, vocab), groups(view.groups), state(row_states(a_)[row_]), maximum(W(state.maximum)),
+        qmax(W(state.qmax)), greedy(state.greedy), valid(state.valid),
+        failed(state.status != OK || (full_q && state.qstatus != OK)),
+        n_keep(failed ? 0 : top_k > 0 && top_k < valid ? int(top_k) : valid),
+        result{0, 1, -1, -1, state.status, state.status} {}
+
   // Counts FP64 recomputations (workspace word 1) so tests and benchmarks can report them.
-  auto fallback = [&]() { if (tid == 0) atomicAdd(reinterpret_cast<unsigned*>(a.workspace) + 1, 1u); };
-
-  // ---- The row's state from row_stats, and which kernel handles it. ----
-  const RowState state = row_states(a)[row];
-  const W maximum = W(state.maximum), qmax = W(state.qmax);
-  const int greedy = state.greedy, valid = state.valid;
-  const bool failed = state.status != OK || (full_q && state.qstatus != OK);
-  const int n_keep = failed ? 0 : top_k > 0 && top_k < valid ? int(top_k) : valid;
-  // LIST_PART finishes list, greedy and failed rows; FULL_PART finishes full
-  // rows, the sliced rows row_scan could not settle, and greedy and failed
-  // rows when there are no lists.
-  if (PART == LIST_PART ? state.part != LIST_PART : state.part != FULL_PART && state.part != SLICED_PART) return;
-  RowResult result{0, 1, -1, -1, state.status, state.status};
-  auto finish = [&]() { if (tid == 0) results[row] = result; };
-  if (failed) {
+  __device__ __forceinline__ void fallback() const {
+    if (tid == 0) atomicAdd(reinterpret_cast<unsigned*>(a.workspace) + 1, 1u);
+  }
+  __device__ __forceinline__ void finish() const {
+    if (tid == 0) reinterpret_cast<RowResult*>(a.workspace + 8)[row] = result;
+  }
+  __device__ __forceinline__ void finish_failed() {
     if (state.status == OK) result.status = state.qstatus;
     finish();
-    return;
   }
 
   // ---- Actual proposal distribution q for full-q draft rows. ----
-  double wq_draft = 0, sq = 0, esq = 0;  // q at the draft token is wq_draft / sq
-  bool sq_exact = false;
-  auto y64 = [&](W y) { return double(y) - double(qmax); };
-  auto yq32 = [&](W y) -> float { return float(y - qmax); };
-  auto q_sum64 = [&]() {
+  __device__ __forceinline__ double y64(W y) const { return double(y) - double(qmax); }
+  __device__ __forceinline__ float yq32(W y) const { return float(y - qmax); }
+  __device__ __forceinline__ void q_sum64() {
     fallback();
     DD acc{0, 0};
     qview.each([&](int g, const W* y) {
       for (int j = 0; j < 4 && 4 * g + j < vocab; ++j)
         if (y[j] != W(-INFINITY)) acc = dd_add(acc, DD{exp(y64(y[j])), 0});
     });
-    sq = block_all(acc, dd_op, DD{0, 0}, s_dd).hi;
+    sq = block_all(acc, DDOp{}, DD{0, 0}, sh.s_dd).hi;
     esq = 0;
     sq_exact = true;
-  };
-  if (full_q) {
+  }
+  // q at the draft token, and an FP32 sum of q weights with an error bound.
+  __device__ __forceinline__ void q_sum32() {
     wq_draft = exp(y64(qview.value(draft_id)));
-    // FP32 sum of q weights with an error bound.
     float s = 0, c = 0, e = 0;
     int pruned = 0;
     qview.each([&](int g, const W* y) {
@@ -886,14 +921,14 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
         e += w * (X_ERR * (1.f + fabsf(x)));
       }
     });
-    sq = block_all(double(s) - double(c), plus, 0.0, s_double);
-    double et = block_all(double(e), plus, 0.0, s_double);
-    pruned = block_all(pruned, plus, 0, s_int);
+    sq = block_all(double(s) - double(c), PlusOp{}, 0.0, sh.s_double);
+    double et = block_all(double(e), PlusOp{}, 0.0, sh.s_double);
+    pruned = block_all(pruned, PlusOp{}, 0, sh.s_int);
     esq = 1.01 * et + 4.8e-7 * sq + pruned * SUM_PRUNE_W;
   }
 
   // ---- Greedy rows: the target is a point mass at the lowest-ID maximum. ----
-  if (temperature == 0) {
+  __device__ __forceinline__ void finish_greedy() {
     result.sample = greedy;
     if (verify) {
       // p is 1 at the greedy token and 0 elsewhere, so q never changes the test.
@@ -910,25 +945,27 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
       }
     }
     finish();
-    return;
   }
 
   // ---- Positive temperature. ----
-  const float inv_t = float(1.0 / temperature);
-  const bool slow_x = !(inv_t < 1e30f);
-  auto x64 = [&](W v) { return (double(v) - double(maximum)) / temperature; };
-  auto x32 = [&](W v) -> float {
+  __device__ __forceinline__ void begin_positive() {
+    inv_t = float(1.0 / temperature);
+    slow_x = !(inv_t < 1e30f);
+    ln_min_p = min_p > 0 ? float(log(min_p)) : -INFINITY;
+    min_p_tol = min_p > 0 ? 1e-6f * (1.f + fabsf(ln_min_p)) : 0.f;
+    u_accept = uniform(seed, stream, position, 1, 0);
+  }
+  __device__ __forceinline__ double x64(W v) const { return (double(v) - double(maximum)) / temperature; }
+  __device__ __forceinline__ float x32(W v) const {
     if constexpr (sizeof(W) == 8) return float(x64(v));
     else {
       float d = v - maximum;
       return slow_x ? float(double(d) / temperature) : d * inv_t;
     }
-  };
-  const float ln_min_p = min_p > 0 ? float(log(min_p)) : -INFINITY;
+  }
   // exp(x64) > 0 and exp(x64) >= min_p, decided exactly: FP32 settles every
   // token whose value is clear of the threshold, FP64 the rest.
-  const float min_p_tol = min_p > 0 ? 1e-6f * (1.f + fabsf(ln_min_p)) : 0.f;
-  auto weight_kept = [&](W v, float x) -> bool {
+  __device__ __forceinline__ bool weight_kept(W v, float x) const {
     // Common case, one comparison chain: clear of both thresholds (ln_min_p is -inf without min-p).
     if ((x > -744.f) & (fabsf(x - ln_min_p) > X_ERR * fabsf(x) + min_p_tol)) return x > ln_min_p;
     if (!(x > -744.f) && (x < -746.5f || !(exp(x64(v)) > 0))) return false;
@@ -937,26 +974,28 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
     if (x > ln_min_p + tol) return true;
     if (x < ln_min_p - tol) return false;
     return exp(x64(v)) >= min_p;
-  };
+  }
+
+  // ---- Selection: exact cuts in (logit desc, id asc) order. ----
   // The n-th entry, in (key desc, id asc) order, of s_key/s_id[0, m): radix
   // select on the key, then on the ID among entries with that key.
-  auto buffer_select = [&](int m, int n) -> Cut<Key> {
+  __device__ __forceinline__ Cut<Key> buffer_select(int m, int n) {
     int need = n;
     Key prefix = 0, known = 0;
     for (int shift = KEY_BITS - 8; shift >= 0; shift -= 8) {
-      if (tid < 256) s_hist[tid] = 0;
+      if (tid < 256) sh.s_hist[tid] = 0;
       __syncthreads();
       for (int i = tid; i < m; i += THREADS)
-        if ((s_key[i] & known) == prefix) atomicAdd(&s_hist[(s_key[i] >> shift) & 255], 1u);
+        if ((s_key[i] & known) == prefix) atomicAdd(&sh.s_hist[(s_key[i] >> shift) & 255], 1u);
       __syncthreads();
-      int count = tid < 256 ? int(s_hist[255 - tid]) : 0, total;  // descending digits
-      int cum = block_scan(count, s_int, &total);
-      if (tid < 256 && cum >= need && cum - count < need) { s_a = 255 - tid; s_b = cum - count; s_n = count; }
+      int count = tid < 256 ? int(sh.s_hist[255 - tid]) : 0, total;  // descending digits
+      int cum = block_scan(count, sh.s_int, &total);
+      if (tid < 256 && cum >= need && cum - count < need) { sh.s_a = 255 - tid; sh.s_b = cum - count; sh.s_n = count; }
       __syncthreads();
-      need -= s_b;
-      prefix |= Key(s_a) << shift;
+      need -= sh.s_b;
+      prefix |= Key(sh.s_a) << shift;
       known |= Key(255) << shift;
-      const bool whole = need == s_n;
+      const bool whole = need == sh.s_n;
       __syncthreads();
       if (whole) {
         // Every entry with this prefix is kept, so the n-th is the last of
@@ -965,40 +1004,34 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
         Key smallest = ~Key(0);
         for (int i = tid; i < m; i += THREADS)
           if ((s_key[i] & known) == prefix && s_key[i] < smallest) smallest = s_key[i];
-        smallest = block_all(smallest, [](Key x, Key y) { return x < y ? x : y; }, ~Key(0), s_keys);
+        smallest = block_all(smallest, [](Key x, Key y) { return x < y ? x : y; }, ~Key(0), sh.s_keys);
         int largest = -1;
         for (int i = tid; i < m; i += THREADS)
           if (s_key[i] == smallest && s_id[i] > largest) largest = s_id[i];
-        largest = block_all(largest, [](int x, int y) { return x > y ? x : y; }, -1, s_int);
+        largest = block_all(largest, [](int x, int y) { return x > y ? x : y; }, -1, sh.s_int);
         return {true, smallest, largest};
       }
     }
     unsigned id = 0, id_known = 0;
     for (int shift = 24; shift >= 0; shift -= 8) {
-      if (tid < 256) s_hist[tid] = 0;
+      if (tid < 256) sh.s_hist[tid] = 0;
       __syncthreads();
       for (int i = tid; i < m; i += THREADS)
-        if (s_key[i] == prefix && (unsigned(s_id[i]) & id_known) == id) atomicAdd(&s_hist[(s_id[i] >> shift) & 255], 1u);
+        if (s_key[i] == prefix && (unsigned(s_id[i]) & id_known) == id) atomicAdd(&sh.s_hist[(s_id[i] >> shift) & 255], 1u);
       __syncthreads();
-      int count = tid < 256 ? int(s_hist[tid]) : 0, total;  // ascending digits
-      int cum = block_scan(count, s_int, &total);
-      if (tid < 256 && cum >= need && cum - count < need) { s_a = tid; s_b = cum - count; }
+      int count = tid < 256 ? int(sh.s_hist[tid]) : 0, total;  // ascending digits
+      int cum = block_scan(count, sh.s_int, &total);
+      if (tid < 256 && cum >= need && cum - count < need) { sh.s_a = tid; sh.s_b = cum - count; }
       __syncthreads();
-      need -= s_b;
-      id |= unsigned(s_a) << shift;
+      need -= sh.s_b;
+      id |= unsigned(sh.s_a) << shift;
       id_known |= 255u << shift;
       __syncthreads();
     }
     return {true, prefix, int(id)};
-  };
-  // Tokens that come after `after` in (logit desc, id asc) order; every token when !has_after.
-  struct After {
-    bool on;
-    Cut<Key> cut;
-    __device__ bool admits(Key k, int t) const { return !on || !cut.keeps(k, t); }
-  };
+  }
   // The ID of the need-th lowest-ID valid token with this key, among those `after` admits.
-  auto tie_id = [&](Key key, int need, After after) {
+  __device__ __forceinline__ int tie_id(Key key, int need, After<Key> after) {
     // Count the ties per tile of 1,024 IDs in one pass (a warp's 32 groups lie
     // in one tile), then find the need-th inside its tile. Uses s_id as scratch.
     constexpr int TILE_GROUPS = 256;
@@ -1017,10 +1050,10 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
     if (tid == 0) {
       int before = 0, tile = 0;
       for (; tile < tiles - 1 && before + s_id[tile] < need; ++tile) before += s_id[tile];
-      s_a = tile; s_b = before;
+      sh.s_a = tile; sh.s_b = before;
     }
     __syncthreads();
-    const int t0 = s_a * TILE_GROUPS * 4 + 2 * tid, before = s_b;
+    const int t0 = sh.s_a * TILE_GROUPS * 4 + 2 * tid, before = sh.s_b;
     int is[2];
     for (int u = 0; u < 2; ++u) {
       const int t = t0 + u;
@@ -1030,18 +1063,18 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
         is[u] = v != W(-INFINITY) && order_key(v) == key && after.admits(key, t);
       }
     }
-    int total, incl = block_scan(is[0] + is[1], s_int, &total);
+    int total, incl = block_scan(is[0] + is[1], sh.s_int, &total);
     const int rank = before + incl - is[0] - is[1];  // ties before this thread's tokens
-    if (is[0] && rank + 1 == need) s_n = t0;
-    if (is[1] && rank + is[0] + 1 == need) s_n = t0 + 1;
+    if (is[0] && rank + 1 == need) sh.s_n = t0;
+    if (is[1] && rank + is[0] + 1 == need) sh.s_n = t0 + 1;
     __syncthreads();
-    const int id = s_n;
+    const int id = sh.s_n;
     __syncthreads();
     return id;
-  };
+  }
   // Appends the tokens flagged in `take` (bit j is token 4g + j) to s_key/s_id.
   // One atomic per warp; entries past GATHER are only counted.
-  auto append = [&](unsigned take, int g, const W* v) {
+  __device__ __forceinline__ void append(unsigned take, int g, const W* v) {
     const int c = __popc(take);
     if (!__any_sync(0xffffffffu, c)) return;
     int incl = c;
@@ -1050,24 +1083,18 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
       if (lane() >= o) incl += y;
     }
     int base = 0;
-    if (lane() == 31) base = atomicAdd(&s_n, incl);
+    if (lane() == 31) base = atomicAdd(&sh.s_n, incl);
     base = __shfl_sync(0xffffffffu, base, 31) + incl - c;
     for (int j = 0; j < 4; ++j) {
       if (!((take >> j) & 1u)) continue;
       if (base < GATHER) { s_key[base] = order_key(v[j]); s_id[base] = 4 * g + j; }
       ++base;
     }
-  };
-  // Exact cut keeping the first n, in (logit desc, id asc) order, of the valid
-  // tokens `after` admits; fewer than all of them. Their values are at most ref.
-  // One pass gathers the candidates within a window below ref; the window is
-  // resized until it holds between n and GATHER of them, and those are then
-  // radix-selected in shared memory. *count is the number gathered, or -1 if
-  // the cut was radix-selected over the whole row instead.
+  }
   // Histogram of the distance below ref of the valid tokens that `after`
   // admits and `keep` keeps (per-warp copies in s_id, then summed): thread b
   // < HIST_BINS receives bin b's count, every thread the count beyond them.
-  auto bucket_counts = [&](After after, Cut<Key> keep, W ref, int* far) {
+  __device__ __forceinline__ int bucket_counts(After<Key> after, Cut<Key> keep, W ref, int* far) {
     static_assert(WARPS * HIST_BINS <= GATHER, "histograms live in s_id");
     unsigned* hist = reinterpret_cast<unsigned*>(s_id);
     for (int i = tid; i < WARPS * HIST_BINS; i += THREADS) hist[i] = 0;
@@ -1086,12 +1113,12 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
     __syncthreads();
     int here = 0;
     if (tid < HIST_BINS) for (int w = 0; w < WARPS; ++w) here += int(hist[w * HIST_BINS + tid]);
-    *far = block_all(beyond, plus, 0, s_int);
+    *far = block_all(beyond, PlusOp{}, 0, sh.s_int);
     return here;
-  };
+  }
   // Gathers those tokens in bins 0..c into s_key/s_id; returns their count.
-  auto gather_bins = [&](After after, Cut<Key> keep, W ref, int c) {
-    if (tid == 0) s_n = 0;
+  __device__ __forceinline__ int gather_bins(After<Key> after, Cut<Key> keep, W ref, int c) {
+    if (tid == 0) sh.s_n = 0;
     __syncthreads();
     view.each([&](int g, const W* v) {
       const unsigned bits = group_mask(a, row, g, vocab);
@@ -1104,31 +1131,36 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
       append(take, g, v);
     });
     __syncthreads();
-    return s_n;
-  };
+    return sh.s_n;
+  }
   // The largest bin-aligned prefix of the tokens `after` admits and `keep`
   // keeps with at most `cap` tokens (or just the first bin, if that alone is
   // larger but fits the buffer), gathered into s_key/s_id: its count, or -1
   // if the first bin does not fit (or every token is 64 logits down).
-  auto gather_prefix = [&](After after, Cut<Key> keep, W ref, int cap) {
+  __device__ __forceinline__ int gather_prefix(After<Key> after, Cut<Key> keep, W ref, int cap) {
     int far;
     const int here = bucket_counts(after, keep, ref, &far);
-    int near_total, cum = block_scan(here, s_int, &near_total);
+    int near_total, cum = block_scan(here, sh.s_int, &near_total);
     int fits = tid < HIST_BINS && here > 0 && (cum <= cap || (cum == here && cum <= GATHER)) ? tid : -1;
-    fits = block_all(fits, [](int x, int y) { return x > y ? x : y; }, -1, s_int);
+    fits = block_all(fits, [](int x, int y) { return x > y ? x : y; }, -1, sh.s_int);
     if (fits < 0) return -1;
     return gather_bins(after, keep, ref, fits);
-  };
-  auto select_next = [&](After after, W ref, int n, int* count) -> Cut<Key> {
+  }
+  // Exact cut keeping the first n, in (logit desc, id asc) order, of the valid
+  // tokens `after` admits; fewer than all of them. Their values are at most ref.
+  // One pass gathers the candidates within a window below ref; if they fit
+  // GATHER they are radix-selected in shared memory. *count is the number
+  // gathered, or -1 if the cut was radix-selected over the whole row instead.
+  __device__ __forceinline__ Cut<Key> select_next(After<Key> after, W ref, int n, int* count) {
     // Pass 1: the histogram; the bin holding the n-th token gives the window.
     int far;
     const Cut<Key> all{false, 0, 0};
     const int here = bucket_counts(after, all, ref, &far);
-    int near_total, cum = block_scan(here, s_int, &near_total);
-    if (tid < HIST_BINS && cum >= n && cum - here < n) { s_a = tid; s_b = cum; }
-    if (tid == 0 && near_total < n) { s_a = HIST_BINS; s_b = near_total + far; }
+    int near_total, cum = block_scan(here, sh.s_int, &near_total);
+    if (tid < HIST_BINS && cum >= n && cum - here < n) { sh.s_a = tid; sh.s_b = cum; }
+    if (tid == 0 && near_total < n) { sh.s_a = HIST_BINS; sh.s_b = near_total + far; }
     __syncthreads();
-    const int c = s_a, m = s_b;
+    const int c = sh.s_a, m = sh.s_b;
     __syncthreads();
     if (c < HIST_BINS && m <= GATHER) {
       // Pass 2: gather the m tokens of bins 0..c; the n-th of them is the cut.
@@ -1140,46 +1172,46 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
     int need = n, ties = 0;
     Key prefix = 0, known = 0;
     for (int shift = KEY_BITS - 8; shift >= 0; shift -= 8) {
-      if (tid < 256) s_hist[tid] = 0;
+      if (tid < 256) sh.s_hist[tid] = 0;
       __syncthreads();
       view.each([&](int g, const W* v) {
         const unsigned bits = group_mask(a, row, g, vocab);
         for (int j = 0; j < 4; ++j) {
           if (!((bits >> j) & 1u) || !(v[j] > W(-INFINITY))) continue;
           Key k = order_key(v[j]);
-          if ((k & known) == prefix && after.admits(k, 4 * g + j)) atomicAdd(&s_hist[(k >> shift) & 255], 1u);
+          if ((k & known) == prefix && after.admits(k, 4 * g + j)) atomicAdd(&sh.s_hist[(k >> shift) & 255], 1u);
         }
       });
       __syncthreads();
-      int here = tid < 256 ? int(s_hist[255 - tid]) : 0, sum;
-      int run = block_scan(here, s_int, &sum);
-      if (tid < 256 && run >= need && run - here < need) { s_a = 255 - tid; s_b = run - here; s_n = here; }
+      int here = tid < 256 ? int(sh.s_hist[255 - tid]) : 0, sum;
+      int run = block_scan(here, sh.s_int, &sum);
+      if (tid < 256 && run >= need && run - here < need) { sh.s_a = 255 - tid; sh.s_b = run - here; sh.s_n = here; }
       __syncthreads();
-      need -= s_b;
-      ties = s_n;
-      prefix |= Key(s_a) << shift;
+      need -= sh.s_b;
+      ties = sh.s_n;
+      prefix |= Key(sh.s_a) << shift;
       known |= Key(255) << shift;
       __syncthreads();
     }
     return {true, prefix, need < ties ? tie_id(prefix, need, after) : INT_MAX};
-  };
+  }
   // Moves the entries of s_key/s_id[0, m) that `keep` admits to the front; returns their count.
-  auto compact = [&](int m, Cut<Key> keep) {
-    if (tid == 0) s_n = 0;
+  __device__ __forceinline__ int compact(int m, Cut<Key> keep) {
+    if (tid == 0) sh.s_n = 0;
     __syncthreads();
     for (int base = 0; base < m; base += THREADS) {  // read a stripe before any of it is overwritten
       const bool mine = base + tid < m && keep.keeps(s_key[base + tid], s_id[base + tid]);
       const Key k = mine ? s_key[base + tid] : 0;
       const int t = mine ? s_id[base + tid] : 0;
       __syncthreads();
-      if (mine) { int i = atomicAdd(&s_n, 1); s_key[i] = k; s_id[i] = t; }
+      if (mine) { int i = atomicAdd(&sh.s_n, 1); s_key[i] = k; s_id[i] = t; }
       __syncthreads();
     }
-    return s_n;
-  };
+    return sh.s_n;
+  }
   // Gathers, from the row, the valid tokens that `after` admits and `keep` keeps.
-  auto gather = [&](After after, Cut<Key> keep) {
-    if (tid == 0) s_n = 0;
+  __device__ __forceinline__ int gather(After<Key> after, Cut<Key> keep) {
+    if (tid == 0) sh.s_n = 0;
     __syncthreads();
     view.each([&](int g, const W* v) {
       const unsigned bits = group_mask(a, row, g, vocab);
@@ -1192,10 +1224,10 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
       append(take, g, v);
     });
     __syncthreads();
-    return s_n;
-  };
+    return sh.s_n;
+  }
   // Sorts s_key/s_id[0, m) into (key desc, id asc) order.
-  auto sort_buffer = [&](int m) {
+  __device__ __forceinline__ void sort_buffer(int m) {
     if (sizeof(Key) == 4 && m > THREADS) {
       unsigned long long items[4];
       for (int u = 0; u < 4; ++u) {
@@ -1203,7 +1235,7 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
         items[u] = i < m ? (static_cast<unsigned long long>(s_key[i]) << 32) | (0xffffffffu - unsigned(s_id[i])) : 0ull;
       }
       __syncthreads();
-      Sort(s_space.sort).SortDescending(items);
+      Sort(sh.s_space.sort).SortDescending(items);
       __syncthreads();
       for (int u = 0; u < 4; ++u) {
         int i = 4 * tid + u;
@@ -1224,161 +1256,197 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
         if (rank[u] >= 0) { s_key[rank[u]] = k[u]; s_id[rank[u]] = t[u]; }
     }
     __syncthreads();
-  };
+  }
 
-  const double u_accept = uniform(seed, stream, position, 1, 0);
-
-  if constexpr (PART == LIST_PART) {
-    // ---- List: at most LIST_MAX tokens, processed in FP64. ----
-    // The kept tokens, compacted to s_key/s_id[0, n_keep) and ranked.
-    const After none{false, {false, 0, 0}};
-    Cut<Key> cut{false, 0, 0};
+  // ---- List: at most LIST_MAX tokens, processed in FP64. ----
+  // Moves row_gather's candidates into s_key/s_id.
+  __device__ __forceinline__ void load_candidates(int gathered) {
+    const int* ids = candidates(a, row);
+    for (int i = tid; i < gathered; i += THREADS) {
+      s_id[i] = ids[i];
+      s_key[i] = order_key(view.value(ids[i]));
+    }
+    __syncthreads();
+  }
+  // The kept tokens in s_key/s_id[0, n): returns n, or -1 when the row
+  // belongs to the FULL kernel after all (it is then marked so).
+  __device__ __forceinline__ int list_candidates() {
+    const After<Key> none{false, {false, 0, 0}};
     int m = -1, n_list = n_keep;
     if (state.gather == TOP_P_GATHER) {
       // The largest bin prefix that fits a list (row_gather); FULL takes the row if it is missing.
       if (tid < 32) {
         int count;
         const int c = window_prefix(row_hist(a, row), TOP_P_LIST, &count);
-        if (tid == 0) { s_a = c; s_b = count; }
+        if (tid == 0) { sh.s_a = c; sh.s_b = count; }
       }
       __syncthreads();
-      const int window = s_a, expected = s_b, gathered = int(arrival_counters(a)[2 * row + 1]);
+      const int window = sh.s_a, expected = sh.s_b, gathered = int(arrival_counters(a)[2 * row + 1]);
       __syncthreads();
       if (window < 0 || gathered != expected) {
         if (tid == 0) row_states(a)[row].part = FULL_PART;
-        return;
+        return -1;
       }
-      const int* ids = candidates(a, row);
-      for (int i = tid; i < gathered; i += THREADS) {
-        s_id[i] = ids[i];
-        s_key[i] = order_key(view.value(ids[i]));
-      }
-      __syncthreads();
-      n_list = gathered;
-    } else if (n_keep < valid) {
+      load_candidates(gathered);
+      return gathered;
+    }
+    if (n_keep < valid) {
       if (tid < 32) {  // the window row_gather used, if any
         int count;
         const int c = window_of(row_hist(a, row), n_keep, &count);
-        if (tid == 0) { s_a = c; s_b = count; }
+        if (tid == 0) { sh.s_a = c; sh.s_b = count; }
       }
       __syncthreads();
-      const int window = s_a, expected = s_b, gathered = int(arrival_counters(a)[2 * row + 1]);
+      const int window = sh.s_a, expected = sh.s_b, gathered = int(arrival_counters(a)[2 * row + 1]);
       __syncthreads();
       if (state.gather && window >= 0 && gathered == expected) {
         // row_gather gathered every token of the bins holding the top k.
-        const int* ids = candidates(a, row);
-        for (int i = tid; i < gathered; i += THREADS) {
-          s_id[i] = ids[i];
-          s_key[i] = order_key(view.value(ids[i]));
-        }
-        __syncthreads();
+        load_candidates(gathered);
         m = gathered;
         cut = buffer_select(m, n_keep);
       } else {
         cut = select_next(none, maximum, n_keep, &m);
       }
     }
-    if (state.gather != TOP_P_GATHER) {
-      if (m >= 0) compact(m, cut);
-      else gather(none, cut);
-    }
+    if (m >= 0) compact(m, cut);
+    else gather(none, cut);
+    return n_list;
+  }
+  // Ranks s_key/s_id[0, n_list) into s_sorted.
+  __device__ __forceinline__ void rank_list(int n_list) {
     for (int i = tid; i < n_list; i += THREADS) {
       int rank = 0;
       for (int j = 0; j < n_list; ++j) rank += s_key[j] > s_key[i] || (s_key[j] == s_key[i] && s_id[j] < s_id[i]);
-      s_sorted[rank] = s_id[i];
+      sh.s_sorted[rank] = s_id[i];
     }
     __syncthreads();
-    // The FP64 work runs in warp 0 only: on this GPU FP64 is 1/64 of the FP32
-    // rate, and a block-wide FP64 reduction would cost microseconds. Lane l
-    // owns entries l, l + 32, ...; results reach the block through shared memory.
-    constexpr int PER_LANE = LIST_MAX / 32;
-    __shared__ int s_n1, s_n2, s_pick_id, s_defer;
+  }
+  // Warp 0: the list's probabilities after min-p and top-p into s_p[0, s_n2),
+  // or s_defer when the top-p boundary is not certain or may run past the
+  // list. On this GPU FP64 is 1/64 of the FP32 rate, and a block-wide FP64
+  // reduction would cost microseconds. Lane l owns entries l, l + 32, ...
+  __device__ __forceinline__ void list_probabilities(int n_list) {
+    double w[PER_LANE];
+    int first_off = INT_MAX;
+    for (int k = 0; k < PER_LANE; ++k) {
+      const int i = lane() + 32 * k;
+      w[k] = 0;
+      if (i >= n_list) continue;
+      w[k] = exp(x64(view.value(sh.s_sorted[i])));
+      if (!(w[k] > 0 && w[k] >= min_p)) first_off = min(first_off, i);  // min-p and positivity cut a suffix
+    }
+    const int n1 = min(n_list, warp_all(first_off, MinOp{}));
+    auto sum_to = [&](int n) {  // double-double sum of entries [0, n)
+      DD acc{0, 0};
+      for (int k = 0; k < PER_LANE; ++k)
+        if (lane() + 32 * k < n) acc = dd_add(acc, DD{w[k], 0});
+      return warp_all(acc, DDOp{});
+    };
+    int n2 = n1, defer = 0;
+    if (top_p < 1) {
+      // The target top_p * total. The total is the list's own sum, unless the
+      // kept set runs past a top-p list: then it is row_hist's FP32 sum, an
+      // interval, and the boundary must be certain under the whole interval.
+      double lo_t, hi_t;
+      if (state.gather == TOP_P_GATHER && n1 == n_list) {
+        const DrawPart merged = merge_draws(a, row);
+        const double total = merged.sum;
+        const double bound = 1.01 * merged.err + 4.8e-7 * total + merged.pruned * SUM_PRUNE_W;
+        lo_t = top_p * (total - bound) * (1 - 1e-15);
+        hi_t = top_p * (total + bound) * (1 + 1e-15);
+      } else {
+        lo_t = hi_t = top_p * sum_to(n1).hi;
+      }
+      // Shortest prefix whose sum reaches the target: an inclusive scan per
+      // round of 32 entries, carried from round to round.
+      DD carry{0, 0};
+      int reached_lo = INT_MAX, reached_hi = INT_MAX;
+      for (int k = 0; k < PER_LANE && 32 * k < n1 && reached_hi == INT_MAX; ++k) {
+        const int i = lane() + 32 * k;
+        DD x{i < n1 ? w[k] : 0.0, 0};
+        for (int o = 1; o < 32; o <<= 1) {
+          const DD y{__shfl_up_sync(0xffffffffu, x.hi, o), __shfl_up_sync(0xffffffffu, x.lo, o)};
+          if (lane() >= o) x = dd_add(y, x);
+        }
+        const DD prefix = dd_add(carry, x);
+        reached_lo = min(reached_lo, warp_all(i < n1 && prefix.hi >= lo_t ? i : INT_MAX, MinOp{}));
+        reached_hi = warp_all(i < n1 && prefix.hi >= hi_t ? i : INT_MAX, MinOp{});
+        carry = {__shfl_sync(0xffffffffu, prefix.hi, 31), __shfl_sync(0xffffffffu, prefix.lo, 31)};
+      }
+      // Not certain, or the nucleus may run past the list: FULL decides.
+      defer = state.gather == TOP_P_GATHER && (reached_hi == INT_MAX ? n1 == n_list : reached_lo != reached_hi);
+      n2 = reached_hi == INT_MAX ? n1 : reached_hi + 1;
+    }
+    const double denominator = sum_to(n2).hi;
+    for (int k = 0; k < PER_LANE; ++k) {
+      const int i = lane() + 32 * k;
+      if (i < n2) sh.s_p[i] = w[k] / denominator;
+    }
+    if (lane() == 0) { sh.s_n2 = n2; sh.s_defer = defer; }
+  }
+  // One draw over the list s_sorted/s_p[0, n2) (warp 0); excluded drops a token.
+  __device__ __forceinline__ int list_draw(int n2, int sub, int excluded) {
     if (warp() == 0) {
-      const int lanes_n = n_list;
-      double w[PER_LANE];
-      int first_off = INT_MAX;
-      for (int k = 0; k < PER_LANE; ++k) {
-        const int i = lane() + 32 * k;
-        w[k] = 0;
-        if (i >= lanes_n) continue;
-        w[k] = exp(x64(view.value(s_sorted[i])));
-        if (!(w[k] > 0 && w[k] >= min_p)) first_off = min(first_off, i);  // min-p and positivity cut a suffix
-      }
-      const int n1 = min(n_list, warp_all(first_off, mini));
-      auto sum_to = [&](int n) {  // double-double sum of entries [0, n)
-        DD acc{0, 0};
-        for (int k = 0; k < PER_LANE; ++k)
-          if (lane() + 32 * k < n) acc = dd_add(acc, DD{w[k], 0});
-        return warp_all(acc, dd_op);
-      };
-      int n2 = n1, defer = 0;
-      if (top_p < 1) {
-        // The target top_p * total. The total is the list's own sum, unless the
-        // kept set runs past a top-p list: then it is row_hist's FP32 sum, an
-        // interval, and the boundary must be certain under the whole interval.
-        double lo_t, hi_t;
-        if (state.gather == TOP_P_GATHER && n1 == n_list) {
-          const DrawPart merged = merge_draws(a, row);
-          const double total = merged.sum;
-          const double bound = 1.01 * merged.err + 4.8e-7 * total + merged.pruned * SUM_PRUNE_W;
-          lo_t = top_p * (total - bound) * (1 - 1e-15);
-          hi_t = top_p * (total + bound) * (1 + 1e-15);
-        } else {
-          lo_t = hi_t = top_p * sum_to(n1).hi;
-        }
-        // Shortest prefix whose sum reaches the target: an inclusive scan per
-        // round of 32 entries, carried from round to round.
-        DD carry{0, 0};
-        int reached_lo = INT_MAX, reached_hi = INT_MAX;
-        for (int k = 0; k < PER_LANE && 32 * k < n1 && reached_hi == INT_MAX; ++k) {
-          const int i = lane() + 32 * k;
-          DD x{i < n1 ? w[k] : 0.0, 0};
-          for (int o = 1; o < 32; o <<= 1) {
-            const DD y{__shfl_up_sync(0xffffffffu, x.hi, o), __shfl_up_sync(0xffffffffu, x.lo, o)};
-            if (lane() >= o) x = dd_add(y, x);
-          }
-          const DD prefix = dd_add(carry, x);
-          reached_lo = min(reached_lo, warp_all(i < n1 && prefix.hi >= lo_t ? i : INT_MAX, mini));
-          reached_hi = warp_all(i < n1 && prefix.hi >= hi_t ? i : INT_MAX, mini);
-          carry = {__shfl_sync(0xffffffffu, prefix.hi, 31), __shfl_sync(0xffffffffu, prefix.lo, 31)};
-        }
-        // Not certain, or the nucleus may run past the list: FULL decides.
-        defer = state.gather == TOP_P_GATHER && (reached_hi == INT_MAX ? n1 == n_list : reached_lo != reached_hi);
-        n2 = reached_hi == INT_MAX ? n1 : reached_hi + 1;
-      }
-      const double denominator = sum_to(n2).hi;
-      for (int k = 0; k < PER_LANE; ++k) {
-        const int i = lane() + 32 * k;
-        if (i < n2) s_p[i] = w[k] / denominator;
-      }
-      if (lane() == 0) { s_n1 = n1; s_n2 = n2; s_defer = defer; }
+      Best<double> b = no_best64();
+      for (int i = lane(); i < n2; i += 32)
+        if (sh.s_sorted[i] != excluded)
+          b = best_of(b, Best<double>{log(sh.s_p[i]) + gumbel(a, req, row, sub, sh.s_sorted[i]), sh.s_sorted[i]});
+      b = warp_all(b, Best64Op{});
+      if (lane() == 0) sh.s_pick_id = b.id == INT_MAX ? -1 : b.id;
     }
     __syncthreads();
-    if (s_defer) {
+    const int id = sh.s_pick_id;
+    __syncthreads();
+    return id;
+  }
+  // Residual max(p - q, 0) over the list. Only q's normalizer is inexact;
+  // it is recomputed if the winner is not certain.
+  __device__ __forceinline__ int list_residual_q(int n2) {
+    for (;;) {
+      if (warp() == 0) {
+        Pick<double> pick = no_pick<double>();
+        for (int i = lane(); i < n2; i += 32) {
+          const int t = sh.s_sorted[i];
+          const W y = qview.value(t);
+          const double wq = y == W(-INFINITY) ? 0.0 : exp(y64(y)), p = sh.s_p[i];
+          const double rmid = p - wq / sq, rlo = p - wq / (sq - esq), rhi = p - wq / (sq + esq);
+          if (rhi > 0) {
+            const double g = gumbel(a, req, row, 2, t);
+            pick = pick_of(pick, Pick<double>{rmid > 0 ? log(rmid) + g : -INFINITY, rlo > 0 ? log(rlo) + g : -INFINITY,
+                                              log(rhi) + g, -INFINITY, t});
+          }
+        }
+        pick = warp_all(pick, [](Pick<double> x, Pick<double> y) { return pick_of(x, y); });
+        if (lane() == 0) {
+          sh.s_settled = sq_exact || pick.id == INT_MAX || pick.lo > pick.others;
+          sh.s_pick_id = pick.id == INT_MAX || !(pick.mid > -INFINITY) ? -1 : pick.id;
+        }
+      }
+      __syncthreads();
+      const bool settled = sh.s_settled;
+      const int id = sh.s_pick_id;
+      __syncthreads();
+      if (settled) return id;
+      q_sum64();
+    }
+  }
+  __device__ __forceinline__ void list_row() {
+    const int n_list = list_candidates();
+    if (n_list < 0) return;
+    rank_list(n_list);
+    if (warp() == 0) list_probabilities(n_list);
+    __syncthreads();
+    if (sh.s_defer) {
       if (tid == 0) row_states(a)[row].part = FULL_PART;
       return;
     }
-    const int n2 = s_n2;
-    // One draw over the list (warp 0); excluded drops a token.
-    auto draw = [&](int sub, int excluded) {
-      if (warp() == 0) {
-        Best<double> b = no_best64;
-        for (int i = lane(); i < n2; i += 32)
-          if (s_sorted[i] != excluded) b = best_of(b, Best<double>{log(s_p[i]) + gumbel(a, req, row, sub, s_sorted[i]), s_sorted[i]});
-        b = warp_all(b, best64_op);
-        if (lane() == 0) s_pick_id = b.id == INT_MAX ? -1 : b.id;
-      }
-      __syncthreads();
-      const int id = s_pick_id;
-      __syncthreads();
-      return id;
-    };
-    if (!verify) { result.sample = draw(0, -1); finish(); return; }
+    const int n2 = sh.s_n2;
+    if (!verify) { result.sample = list_draw(n2, 0, -1); finish(); return; }
     int at_draft = INT_MAX;
     for (int i = tid; i < n2; i += THREADS)
-      if (s_sorted[i] == draft_id) at_draft = i;
-    at_draft = block_all(at_draft, mini, INT_MAX, s_int);
-    const double px = at_draft == INT_MAX ? 0.0 : s_p[at_draft];
+      if (sh.s_sorted[i] == draft_id) at_draft = i;
+    at_draft = block_all(at_draft, MinOp{}, INT_MAX, sh.s_int);
+    const double px = at_draft == INT_MAX ? 0.0 : sh.s_p[at_draft];
     bool accept;
     if (!full_q) accept = u_accept < fmin(1.0, px);
     else {
@@ -1389,59 +1457,28 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
       accept = u_accept < fmin(1.0, px / (wq_draft / sq));
     }
     result.p = accept ? 1.0 : 0.0;
-    if (accept) { finish(); return; }
-    if (!full_q) { result.residual = draw(2, draft_id); finish(); return; }
-    // Residual max(p - q, 0). Only q's normalizer is inexact; recompute it if the winner is not certain.
-    for (;;) {
-      __shared__ int s_settled;
-      if (warp() == 0) {
-        Pick<double> pick = no_pick<double>();
-        for (int i = lane(); i < n2; i += 32) {
-          const int t = s_sorted[i];
-          const W y = qview.value(t);
-          const double wq = y == W(-INFINITY) ? 0.0 : exp(y64(y)), p = s_p[i];
-          const double rmid = p - wq / sq, rlo = p - wq / (sq - esq), rhi = p - wq / (sq + esq);
-          if (rhi > 0) {
-            const double g = gumbel(a, req, row, 2, t);
-            pick = pick_of(pick, Pick<double>{rmid > 0 ? log(rmid) + g : -INFINITY, rlo > 0 ? log(rlo) + g : -INFINITY,
-                                              log(rhi) + g, -INFINITY, t});
-          }
-        }
-        pick = warp_all(pick, [](Pick<double> x, Pick<double> y) { return pick_of(x, y); });
-        if (lane() == 0) {
-          s_settled = sq_exact || pick.id == INT_MAX || pick.lo > pick.others;
-          s_pick_id = pick.id == INT_MAX || !(pick.mid > -INFINITY) ? -1 : pick.id;
-        }
-      }
-      __syncthreads();
-      const bool settled = s_settled;
-      result.residual = s_pick_id;
-      __syncthreads();
-      if (settled) break;
-      q_sum64();
-    }
+    if (!accept) result.residual = full_q ? list_residual_q(n2) : list_draw(n2, 2, draft_id);
     finish();
-    return;
   }
 
-  if constexpr (PART != LIST_PART) {
   // ---- Full row. ----
-  const After none{false, {false, 0, 0}};
-  Cut<Key> cut{false, 0, 0};
-  if (n_keep < valid) {
-    int m;
-    cut = select_next(none, maximum, n_keep, &m);
+  // The top-k cut, for every row the FULL kernel finishes.
+  __device__ __forceinline__ void keep_top_k() {
+    if (n_keep < valid) {
+      int m;
+      cut = select_next(After<Key>{false, {false, 0, 0}}, maximum, n_keep, &m);
+    }
   }
   // Whether token t (value v, bit j of bits) is in the kept set; *x is always set.
-  auto kept = [&](W v, int t, unsigned bits, int j, float* x) {
+  __device__ __forceinline__ bool kept(W v, int t, unsigned bits, int j, float* x) const {
     *x = x32(v);
     const Key k = order_key(v);
     const bool in = ((bits >> j) & 1u) & (v > W(-INFINITY)) &
                     (!cut.on | (k > cut.key) | ((k == cut.key) & (t <= cut.id)));
     return in && weight_kept(v, *x);
-  };
+  }
   // FP32 sum of kept weights; *err bounds its error.
-  auto sum32 = [&](double* err) {
+  __device__ __forceinline__ double sum32(double* err) {
     float s = 0, c = 0, e = 0;
     int pruned = 0;
     view.each([&](int g, const W* v) {
@@ -1456,13 +1493,13 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
         e += counted ? w * (X_ERR * (1.f + fabsf(x))) : 0.f;  // x is -inf for tokens not kept
       }
     });
-    double total = block_all(double(s) - double(c), plus, 0.0, s_double);
-    double et = block_all(double(e), plus, 0.0, s_double);
-    pruned = block_all(pruned, plus, 0, s_int);
+    double total = block_all(double(s) - double(c), PlusOp{}, 0.0, sh.s_double);
+    double et = block_all(double(e), PlusOp{}, 0.0, sh.s_double);
+    pruned = block_all(pruned, PlusOp{}, 0, sh.s_int);
     *err = 1.01 * et + 4.8e-7 * total + pruned * SUM_PRUNE_W;
     return total;
-  };
-  auto sum64 = [&]() {
+  }
+  __device__ __forceinline__ double sum64() {
     fallback();
     DD acc{0, 0};
     view.each([&](int g, const W* v) {
@@ -1472,20 +1509,15 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
         if (kept(v[j], 4 * g + j, bits, j, &x)) acc = dd_add(acc, DD{exp(x64(v[j])), 0});
       }
     });
-    return block_all(acc, dd_op, DD{0, 0}, s_dd).hi;
-  };
-
-  double sp = 0, esp = 0;  // sum of kept weights and its error bound
-  bool sp_known = false, sp_exact = false;
-  // Kahan sum of kept weights, accumulated by scan when sliced.
-  struct Sum { float s, c, e; int pruned; };
+    return block_all(acc, DDOp{}, DD{0, 0}, sh.s_dd).hi;
+  }
   // Calls emit(t, v, y, word, mid, lo, hi) for every kept token of groups
   // [first, last) that can beat `floor` in the draw (sub, excluded,
   // residual_q); others are only bounded, in *skipped. With running set, a
-  // thread also skips tokens that cannot beat its own best so far. With sum
-  // set, every kept token's weight is added to it as well.
-  auto scan = [&](int sub, int excluded, bool residual_q, int first, int last, float floor, bool running,
-                  auto&& emit, Pick<float>* pick, float* skipped, Sum* sum) {
+  // thread also skips tokens that cannot beat its own best so far.
+  template <class Emit>
+  __device__ __forceinline__ void scan(int sub, int excluded, bool residual_q, int first, int last, float floor,
+                                       bool running, Emit&& emit, Pick<float>* pick, float* skipped) {
     const float inv_sp = float(1.0 / sp), inv_sq = float(1.0 / sq);
     const float rel_sp = float(esp / sp) + 2.4e-7f, rel_sq = float(esq / sq) + 2.4e-7f;
     view.each([&](int g, const W* v) {
@@ -1498,13 +1530,6 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
 #pragma unroll
       for (int j = 0; j < 4; ++j) {  // branch-free classification of the four tokens
         const bool in = kept(v[j], 4 * g + j, bits, j, &xs[j]);
-        if (sum) {
-          const bool counted = in & (xs[j] >= SUM_PRUNE);
-          sum->pruned += in & !counted;
-          const float w = counted ? expf(xs[j]) : 0.f, d = w - sum->c, t = sum->s + d;
-          sum->c = (t - sum->s) - d; sum->s = t;
-          sum->e += counted ? w * (X_ERR * (1.f + fabsf(xs[j]))) : 0.f;  // x is -inf for tokens not kept
-        }
         const bool candidate = in & (4 * g + j != excluded);
         const float ub = residual_q ? INFINITY : xs[j] + GUMBEL_MAX + SCORE_ERR * (1.f + fabsf(xs[j]) + GUMBEL_MAX);
         const bool alive = candidate & (ub >= bar);
@@ -1542,9 +1567,9 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
         emit(4 * g + j, v[j], y[j], words[j], r > 0 ? __logf(r) + G : -INFINITY, lo + G - eg, hi + G + eg);
       }
     }, first, last);
-  };
+  }
   // The greedy token is always kept; its score bounds the winner's from below.
-  auto floor_of = [&](int sub, int excluded, bool residual_q) {
+  __device__ __forceinline__ float floor_of(int sub, int excluded, bool residual_q) {
     if (tid == 0) {
       float floor = -INFINITY;
       if (!residual_q && excluded != greedy) {
@@ -1553,22 +1578,22 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
         float g = gumbel32(words[greedy % 4]);
         floor = g - SCORE_ERR * (1.f + fabsf(g));
       }
-      s_floor = floor;
+      sh.s_floor = floor;
     }
     __syncthreads();
-    return s_floor;
-  };
+    return sh.s_floor;
+  }
   // The exact winner when the FP32 one is not certain: rescore in FP64 every
   // token whose interval reaches the FP32 winner's lower bound.
-  auto rescore = [&](int sub, int excluded, bool residual_q, float threshold) {
+  __device__ __forceinline__ int rescore(int sub, int excluded, bool residual_q, float threshold) {
     fallback();
     if (residual_q) {
       if (!sp_exact) { sp = sum64(); sp_exact = true; }
       if (!sq_exact) q_sum64();
     }
-    Best<double> exact = no_best64;
-    Pick<float> unused_pick = no_pick<float>();
-    float unused = -INFINITY;
+    Best<double> exact = no_best64();
+    Pick<float> no_running_pick = no_pick<float>();
+    float skipped = -INFINITY;
     scan(sub, excluded, residual_q, 0, groups, threshold, false, [&](int t, W v, W y, uint32_t word, float, float, float hi) {
       if (hi < threshold) return;
       double score = gumbel64(word);
@@ -1579,12 +1604,12 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
         score += log(r);
       }
       exact = best_of(exact, Best<double>{score, t});
-    }, &unused_pick, &unused, nullptr);
-    exact = block_all(exact, best64_op, no_best64, s_best64);
+    }, &no_running_pick, &skipped);
+    exact = block_all(exact, Best64Op{}, no_best64(), sh.s_best64);
     return exact.id == INT_MAX ? -1 : exact.id;
-  };
+  }
   // The ratio test given the sum of kept weights sp +- esp; recomputes sp in FP64 if it decides nothing.
-  auto ratio_test = [&]() {
+  __device__ __forceinline__ bool ratio_test() {
     W vx = view.value(draft_id);
     float xx;
     const double wx = allowed(a, row, draft_id) && kept(vx, draft_id, 1u, 0, &xx) ? exp(x64(vx)) : 0.0;
@@ -1599,19 +1624,19 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
     sp = sum64(); esp = 0; sp_exact = true;
     if (full_q) q_sum64();
     return u_accept < fmin(1.0, (wx / sp) / (full_q ? wq_draft / sq : 1.0));
-  };
-  if (state.part == FULL_PART) {
-  if (top_p < 1) {
-    // Top-p: scan the kept set in sorted chunks until the prefix reaches
-    // top_p * total. Prefix sums are FP32 with an error bound; if the bound
-    // does not settle the boundary, the total, the mass before the chunk and
-    // the chunk are recomputed in FP64 and the scan continues exactly.
+  }
+  // Top-p: scan the kept set in sorted chunks until the prefix reaches
+  // top_p * total, and narrow the cut to that prefix (sp, esp: its sum).
+  // Prefix sums are FP32 with an error bound; if the bound does not settle
+  // the boundary, the total, the mass before the chunk and the chunk are
+  // recomputed in FP64 and the scan continues exactly.
+  __device__ __forceinline__ void top_p_cut() {
     constexpr int CHUNK = sizeof(Key) == 4 ? CHUNK32 : CHUNK64;
     double e0, s0 = sum32(&e0), target = 0;
     double above = 0, e_above = 0;
     DD above64{0, 0};
     bool exact = false;
-    After after{false, {false, 0, 0}};
+    After<Key> after{false, {false, 0, 0}};
     W ref = maximum;
     for (int left = n_keep; left > 0;) {
       // A bin-aligned prefix of what is left, as large as the buffer allows;
@@ -1644,7 +1669,7 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
           else if (x < SUM_PRUNE) e[u] = SUM_PRUNE_W;
           else { w[u] = expf(x); e[u] = w[u] * (X_ERR * (1.f + fabsf(x))) * 1.01; }
         }
-        first_out = block_all(first_out, mini, INT_MAX, s_int);
+        first_out = block_all(first_out, MinOp{}, INT_MAX, sh.s_int);
         const int kept_n = min(n, first_out);
         for (int u = 0; u < 4; ++u) {
           if (4 * tid + u >= kept_n) w[u] = e[u] = 0;
@@ -1652,18 +1677,18 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
           local64 = dd_add(local64, DD{w[u], 0});
         }
         // Exclusive prefix over threads, then inclusive within the thread.
-        double total, total_e, prefix = block_scan(local, s_double, &total) - local;
-        double prefix_e = block_scan(local_e, s_double, &total_e) - local_e;
+        double total, total_e, prefix = block_scan(local, sh.s_double, &total) - local;
+        double prefix_e = block_scan(local_e, sh.s_double, &total_e) - local_e;
         if (exact) {  // double-double scan over thread totals
-          s_scan[tid] = local64;
+          sh.s_scan[tid] = local64;
           __syncthreads();
           for (int offset = 1; offset < THREADS; offset <<= 1) {
-            DD other = tid >= offset ? s_scan[tid - offset] : DD{0, 0};
+            DD other = tid >= offset ? sh.s_scan[tid - offset] : DD{0, 0};
             __syncthreads();
-            if (tid >= offset) s_scan[tid] = dd_add(s_scan[tid], other);
+            if (tid >= offset) sh.s_scan[tid] = dd_add(sh.s_scan[tid], other);
             __syncthreads();
           }
-          local64 = tid ? dd_add(above64, s_scan[tid - 1]) : above64;
+          local64 = tid ? dd_add(above64, sh.s_scan[tid - 1]) : above64;
         }
         // First entry whose prefix certainly reaches the target, and first that may.
         int surely = INT_MAX, maybe = INT_MAX;
@@ -1682,8 +1707,8 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
           if (run + slack >= lo_t) maybe = min(maybe, i);
           if (run - slack >= hi_t) surely = min(surely, i);
         }
-        surely = block_all(surely, mini, INT_MAX, s_int);
-        maybe = block_all(maybe, mini, INT_MAX, s_int);
+        surely = block_all(surely, MinOp{}, INT_MAX, sh.s_int);
+        maybe = block_all(maybe, MinOp{}, INT_MAX, sh.s_int);
         if (!exact && maybe != INT_MAX && maybe != surely) {
           // The boundary is not certain: switch to FP64 and redo this chunk.
           fallback();
@@ -1698,8 +1723,8 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
               if (after.on && !after.admits(order_key(v[j]), 4 * g + j)) before = dd_add(before, wd);
             }
           });
-          s0 = block_all(all, dd_op, DD{0, 0}, s_dd).hi;
-          above64 = block_all(before, dd_op, DD{0, 0}, s_dd);
+          s0 = block_all(all, DDOp{}, DD{0, 0}, sh.s_dd).hi;
+          above64 = block_all(before, DDOp{}, DD{0, 0}, sh.s_dd);
           target = top_p * s0;
           exact = redo = true;
           continue;
@@ -1708,17 +1733,17 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
         // The prefix through `last`: its sum (for the denominator) and its token.
         if (tid == (last >> 2)) {
           double r = above + prefix, re = e_above + prefix_e;
-          DD r64 = exact ? (tid ? dd_add(above64, s_scan[tid - 1]) : above64) : DD{0, 0};
+          DD r64 = exact ? (tid ? dd_add(above64, sh.s_scan[tid - 1]) : above64) : DD{0, 0};
           for (int u = 0; u <= (last & 3); ++u) { r += w[u]; re += e[u]; r64 = dd_add(r64, DD{w[u], 0}); }
-          s_double[0] = exact ? r64.hi : r;
-          s_double[1] = exact ? 0.0 : re;
-          s_dd[0] = r64;
+          sh.s_double[0] = exact ? r64.hi : r;
+          sh.s_double[1] = exact ? 0.0 : re;
+          sh.s_dd[0] = r64;
           s_key[GATHER - 1] = s_key[last];
           s_id[GATHER - 1] = s_id[last];
         }
         __syncthreads();
-        const double reached = s_double[0], reached_e = s_double[1];
-        const DD reached64 = s_dd[0];
+        const double reached = sh.s_double[0], reached_e = sh.s_double[1];
+        const DD reached64 = sh.s_dd[0];
         const Key last_key = s_key[GATHER - 1];
         const int last_id = s_id[GATHER - 1];
         __syncthreads();
@@ -1739,46 +1764,49 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
       }
     }
   }
-  if (verify) {
-    if (!sp_known) sp = sum32(&esp);
-    const bool accept = ratio_test();
-    result.p = accept ? 1.0 : 0.0;
-    if (accept) { finish(); return; }
-  }
-  // Draw one token from the kept set (excluded drops a token) or, for
+  // Draws one token from the kept set (excluded drops a token) or, for
   // residual_q, from max(p - q, 0).
-  auto draw = [&](int sub, int excluded, bool residual_q) -> int {
+  __device__ __forceinline__ int draw(int sub, int excluded, bool residual_q) {
     const float lower = floor_of(sub, excluded, residual_q);
     Pick<float> pick = no_pick<float>();
     float skipped = -INFINITY;
     scan(sub, excluded, residual_q, 0, groups, lower, true, [&](int t, W, W, uint32_t, float mid, float lo, float hi) {
       pick = pick_of(pick, Pick<float>{mid, lo, hi, -INFINITY, t});
-    }, &pick, &skipped, nullptr);
+    }, &pick, &skipped);
     pick.others = fmaxf(pick.others, skipped);
-    pick = block_all(pick, [](Pick<float> x, Pick<float> y) { return pick_of(x, y); }, no_pick<float>(), s_pick32);
+    pick = block_all(pick, [](Pick<float> x, Pick<float> y) { return pick_of(x, y); }, no_pick<float>(), sh.s_pick32);
     if (pick.id == INT_MAX) return -1;
     if (pick.lo > pick.others) return pick.id;
     return rescore(sub, excluded, residual_q, pick.lo);
-  };
-  if (!verify) result.sample = draw(0, -1, false);
-  else result.residual = full_q ? draw(2, -1, true) : draw(2, draft_id, false);
-  finish();
-  } else {
-    // ---- Sliced: temperature-only one-hot rows. row_scan has scanned each
-    // slice for the draw (and, for a ratio test, the sum of weights); merge
-    // the slices in order and decide. ----
+  }
+  __device__ __forceinline__ void full_row() {
+    if (top_p < 1) top_p_cut();
+    if (verify) {
+      if (!sp_known) sp = sum32(&esp);
+      const bool accept = ratio_test();
+      result.p = accept ? 1.0 : 0.0;
+      if (accept) { finish(); return; }
+    }
+    if (!verify) result.sample = draw(0, -1, false);
+    else result.residual = full_q ? draw(2, -1, true) : draw(2, draft_id, false);
+    finish();
+  }
+
+  // ---- Sliced: temperature-only one-hot rows. row_scan has scanned each
+  // slice for the draw (and, for a ratio test, the sum of weights); merge
+  // the slices in order and decide. ----
+  __device__ __forceinline__ void sliced_row() {
     const int sub = verify ? 2 : 0, excluded = verify ? draft_id : -1;
     // Warp 0 merges the parts in a fixed order.
-    __shared__ DrawPart s_merged;
     if (warp() == 0) {
       const DrawPart merged = merge_draws(a, row);
-      if (lane() == 0) s_merged = merged;
+      if (lane() == 0) sh.s_merged = merged;
     }
     __syncthreads();
-    const Pick<float> pick = s_merged.pick;
-    sp = s_merged.sum;
-    const double err = s_merged.err;
-    const int pruned = s_merged.pruned;
+    const Pick<float> pick = sh.s_merged.pick;
+    sp = sh.s_merged.sum;
+    const double err = sh.s_merged.err;
+    const int pruned = sh.s_merged.pruned;
     if (verify) {
       esp = 1.01 * err + 4.8e-7 * sp + pruned * SUM_PRUNE_W;
       const bool accept = ratio_test();
@@ -1789,6 +1817,42 @@ __global__ void __launch_bounds__(THREADS) fused_rows(const __grid_constant__ Ar
     if (verify) result.residual = token; else result.sample = token;
     finish();
   }
+};
+
+// One block per row. LIST_PART finishes list, greedy and failed rows;
+// FULL_PART finishes full rows, the sliced rows row_scan could not settle,
+// and greedy and failed rows when there are no lists. The arguments are
+// __grid_constant__: the kernel passes them by reference to code that is not
+// inlined, which would otherwise copy all 736 bytes to local memory in every
+// thread before the early exit (2.4 us per launch).
+template <DType D, bool VECTOR, int PART>
+__global__ void __launch_bounds__(THREADS, PART == LIST_PART ? 2 : 1) fused_rows(const __grid_constant__ Arguments a) {
+  __shared__ RowShared<D, PART> shared;
+  const int row = blockIdx.y;
+  if (*reinterpret_cast<const int*>(a.workspace)) return;  // malformed offsets
+  {
+    // Leave rows of the other kernel at once (before the request lookup and
+    // parameter loads): most launches of this large kernel have nothing to do.
+    // A stale state (for a request that failed validation) only falls through
+    // to the checks below.
+    const int part = row_states(a)[row].part;
+    if (PART == LIST_PART ? part != LIST_PART : part != FULL_PART && part != SLICED_PART) return;
+  }
+  const int req = request_of(a, row);
+  if (a.status[req * a.status_s] != OK || a.path[req * a.path_s] != FUSED) return;
+  RowWork<D, VECTOR, PART> work(a, shared, row, req);
+  const int part = work.state.part;
+  if (PART == LIST_PART ? part != LIST_PART : part != FULL_PART && part != SLICED_PART) return;
+  if (work.failed) { work.finish_failed(); return; }
+  if (work.full_q) work.q_sum32();
+  if (work.temperature == 0) { work.finish_greedy(); return; }
+  work.begin_positive();
+  if constexpr (PART == LIST_PART) {
+    work.list_row();
+  } else {
+    work.keep_top_k();
+    if (part == FULL_PART) work.full_row();
+    else work.sliced_row();
   }
 }
 
