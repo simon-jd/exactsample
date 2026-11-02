@@ -1,4 +1,4 @@
-"""Pre-registered G/Holm analysis, separate from any sampler."""
+"""G-test and Holm analysis of the fixed statistical plan, separate from any sampler."""
 import math
 
 

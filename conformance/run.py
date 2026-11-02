@@ -1,4 +1,4 @@
-"""Small shared-input observations, not the pre-registered distribution test.
+"""Small shared-input observations, not the statistical plan's distribution test.
 
 Missing implementations are explicit skips. Runtime failures are errors. A
 third-party token mismatch is not itself a bug because its RNG is different.

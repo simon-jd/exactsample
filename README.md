@@ -21,7 +21,8 @@ instead of a failed batch.
 - **Exact.** On 192 requests built from captured Qwen3-8B logits (352 rows,
   with and without 4-token drafts), every token, accepted length and status
   equals the FP64 NumPy reference's, with no FP64 fallback needed. A
-  preregistered statistical plan passes in all ten cells, and the four
+  statistical plan fixed in advance (its hash recorded with each result)
+  passes in all ten cells, and the four
   compute-sanitizer tools report no errors ([Correctness](#correctness)).
 - **Faster per call.** With Qwen3's recommended settings (T=0.6, top-k
   20, top-p 0.95), a call for 128 requests takes 96 us of GPU time,
@@ -90,7 +91,7 @@ their alternatives and costs. In short:
 | Inputs that defeat FP32 (scores 1e-10 apart, a ratio test 1e-12 from the threshold, min-p and top-p boundaries on exact sums) are settled in FP64 | `tests/test_fused.py` |
 | Batch invariance: alone, permuted, next to other requests, and at different slice counts | `tests/test_fused.py` |
 | Exact probability laws (rational arithmetic, every branch enumerated) for the verification algorithms | `reference/exact.py`, `tests/exact/` |
-| A preregistered statistical plan (G-tests against exact laws), 2M draws per cell, on small vocabularies (2 to 4 tokens, FP64 inputs) where the exact law is enumerable | `tests/stat/`, `tests/stat_plan.json`, `results/stat-cuda*.json` |
+| A statistical plan fixed in advance, its sha256 recorded in each result (G-tests against exact laws), 2M draws per cell, on small vocabularies (2 to 4 tokens, FP64 inputs) where the exact law is enumerable | `tests/stat/`, `tests/stat_plan.json`, `results/stat-cuda*.json` |
 | compute-sanitizer memcheck, racecheck, initcheck and synccheck over the CUDA tests (the full-vocabulary cases are skipped under the sanitizer, which would take hours) | `tests/sanitizer/run.py` |
 | Agreement on the captured Qwen3-8B logits | `bench/agreement.py`, `results/agreement.json` |
 

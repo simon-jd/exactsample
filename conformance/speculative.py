@@ -1,7 +1,7 @@
 """Real speculative-kernel observations against the same hand-computed p/q.
 
 This finite smoke experiment records marginal and acceptance counts. It is not
-a replacement for the pre-registered statistics or engine integration.
+a replacement for the statistical plan or engine integration.
 """
 import argparse
 import hashlib

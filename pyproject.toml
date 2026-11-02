@@ -25,6 +25,6 @@ testpaths = ["tests"]
 pythonpath = ["python", "."]
 markers = [
   "cuda: requires a working CUDA device and the compiled exactsample operator",
-  "statistical: preregistered large-sample tests",
+  "statistical: large-sample tests of the fixed statistical plan",
   "integration: requires model weights and a supported inference engine",
 ]

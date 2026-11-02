@@ -21,7 +21,7 @@ class StatisticalAnalysis(unittest.TestCase):
         self.assertEqual(holm([.0035, .0001, .5]), [True, True, False])
         self.assertEqual(holm([.004, .0041, .0042]), [False, False, False])
 
-    def test_preregistered_sample_size(self):
+    def test_planned_sample_size(self):
         plan = json.loads((Path(__file__).parent / 'stat_plan.json').read_text())
         self.assertEqual(len(plan['cells']), plan['family_cells'])
         bound = power_bound(plan)
