@@ -23,12 +23,14 @@ instead of a failed batch.
   equals the FP64 NumPy reference's, with no FP64 fallback needed. A
   preregistered statistical plan passes in all ten cells, and the four
   compute-sanitizer tools report no errors ([Correctness](#correctness)).
-- **Fast where it matters.** With Qwen3's recommended settings (T=0.6, top-k
+- **Faster per call.** With Qwen3's recommended settings (T=0.6, top-k
   20, top-p 0.95), a call for 128 requests takes 96 us of GPU time,
   against 455 us for vLLM 0.31's sampler and 626 us for FlashInfer
   0.7's fastest public path. Verifying 4 drafts for each of 64 requests takes
   382 us against 1,535 and 2,924. Medians of 10 runs; L2-cold
-  times are in the tables.
+  times are in the tables. End to end in vLLM, where sampling is a small
+  part of a decode step, TPOT drops by only 0.5 to 2.5% with these
+  settings ([Limitations](#limitations)).
 - **Where it loses.** Temperature-only sampling of up to eight requests:
   vLLM's single Gumbel kernel takes 10 us for one request against
   17, because exactsample reads each row twice (statistics, then the
