@@ -1,4 +1,4 @@
-"""Independent CPU review of bridge mapping and patched dispatch boundaries.
+"""CPU tests of the bridge's request mapping and the patched dispatch boundaries.
 
 Set EXACTSAMPLE_VLLM_SOURCE to a pinned vLLM checkout or site-packages to additionally
 exercise functions extracted from the actual original and patched source.
@@ -45,7 +45,7 @@ def runner_fixture():
               _exactsample_bridge={"requests": {}, "request_seeds": {}})
 
 
-class BridgeEligibilityReview(unittest.TestCase):
+class BridgeEligibilityTest(unittest.TestCase):
     def test_request_permutation_and_slot_reuse(self):
         runner = runner_fixture()
         register_request(runner, "alice", 7, NS())
@@ -156,14 +156,14 @@ def extracted_function(source, name, *, class_name=None, globals_=None):
     return namespace[name]
 
 
-@unittest.skipUnless(os.environ.get("EXACTSAMPLE_VLLM_SOURCE"), "set EXACTSAMPLE_VLLM_SOURCE for pinned-source review")
-class PinnedPatchReview(unittest.TestCase):
+@unittest.skipUnless(os.environ.get("EXACTSAMPLE_VLLM_SOURCE"), "set EXACTSAMPLE_VLLM_SOURCE for the pinned-source checks")
+class PinnedPatchTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.source = Path(os.environ["EXACTSAMPLE_VLLM_SOURCE"])
         repo = Path(__file__).resolve().parents[1]
         manifest = json.loads((repo / "vllm-patches/manifest.json").read_text())
-        cls.temporary = tempfile.TemporaryDirectory(prefix="exactsample-bridge-review-")
+        cls.temporary = tempfile.TemporaryDirectory(prefix="exactsample-bridge-patch-")
         cls.root = Path(cls.temporary.name)
         actual_hashes = set()
         for name, record in manifest["files"].items():
@@ -372,7 +372,7 @@ class PinnedPatchReview(unittest.TestCase):
 
 
 @unittest.skipUnless(importlib.util.find_spec("torch"), "optional PyTorch CPU dependency missing")
-class BridgeCpuCallReview(unittest.TestCase):
+class BridgeCpuCallTest(unittest.TestCase):
     """Run the bridge with actual CPU tensors and mocked vLLM/CUDA boundaries."""
     @staticmethod
     def bridge_state(runner, max_draft, requests=3, depth=3):

@@ -28,8 +28,8 @@ def extract_class(source, name, namespace):
 
 
 @unittest.skipUnless(os.environ.get("EXACTSAMPLE_VLLM_SOURCE") and importlib.util.find_spec("torch"),
-                     "set EXACTSAMPLE_VLLM_SOURCE and install optional torch for native async review")
-class AsyncStatusReview(unittest.TestCase):
+                     "set EXACTSAMPLE_VLLM_SOURCE and install optional torch for the native async checks")
+class AsyncStatusTest(unittest.TestCase):
     @contextmanager
     def environment(self):
         import torch
