@@ -134,6 +134,18 @@ at 128), and its call time, which adds host overhead, is lower in every cell:
 draw (or the error analysis redone around per-block maxima) and a second
 implementation of every fallback.
 
+**One function body.** `fused_rows` is one long kernel body. Splitting it
+into `__forceinline__` device helpers (9a369f2) did not give nvcc the same
+code: over 10 interleaved runs per kernel (`results/sampler/split-check/`),
+the split was 2.5% faster on the largest verification batches with a warm L2
+(373 vs 383 us at 64 x 5 with the Qwen3 settings, 405 vs 415 us top-p only)
+and level with a cold one (437 vs 436 us), but 0.5 to 1.4% slower in the
+other Qwen3-setting cells from 8 requests up (96.1 vs 95.6 us at 128 x 1,
+outside that cell's 0.16 us IQR); temperature-only and top-p-only cells
+moved by at most 1.3% either way.
+The single body was kept (1aa7ebf, whose machine code matches 88df42c),
+so the benchmark tables stay those of the measured kernel.
+
 ## Every draft position drawn in the same pass
 
 **Decision.** All rows of a request (each draft position and the bonus row)
