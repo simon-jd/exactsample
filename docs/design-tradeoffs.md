@@ -140,8 +140,9 @@ code: over 10 interleaved runs per kernel (`results/sampler/split-check/`),
 the split was 2.5% faster on the largest verification batches with a warm L2
 (373 vs 383 us at 64 x 5 with the Qwen3 settings, 405 vs 415 us top-p only)
 and level with a cold one (437 vs 436 us), but 0.5 to 1.4% slower in the
-other Qwen3-setting cells from 8 requests up (96.1 vs 95.6 us at 128 x 1,
-outside that cell's 0.16 us IQR); temperature-only and top-p-only cells
+8 x 1, 32 x 1, 128 x 1 and 8 x 5 cells with the Qwen3 settings (96.1 vs
+95.6 us at 128 x 1, outside that cell's 0.16 us IQR; 32 x 5, whose IQR is
+8.5 us, moved within its noise); temperature-only and top-p-only cells
 moved by at most 1.3% either way.
 The single body was kept (1aa7ebf, whose machine code matches 88df42c),
 so the benchmark tables stay those of the measured kernel.
