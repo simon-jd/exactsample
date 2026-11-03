@@ -8,6 +8,10 @@ request verifies, so the benchmark builds both ordinary and draft-row
 workloads from this file.
 
     python bench/capture_logits.py --model Qwen/Qwen3-8B --output results/raw/logits/qwen3-8b.npz
+
+The README gives the command that made the benchmark's capture (the model's
+cached snapshot directory as --model, so that the revision is recorded) and
+its sha256.
 """
 import argparse
 import hashlib

@@ -15,10 +15,11 @@ the same torch op. Reported per call:
     python bench/sampler.py --impl exactsample --run 1 --output OUT/exactsample-1.jsonl
     python bench/sampler.py --impl flashinfer:probs --run 1 --output OUT/flashinfer-probs-1.jsonl
 
-The logits come from --capture (bench/capture_logits.py's output).
-bench/run_sampler.sh repeats every implementation, interleaved, which is how
-results/sampler/runs was made, and bench/summarize.py reports the median and
-interquartile range over runs.
+The logits come from --capture (bench/capture_logits.py's output; see the
+README for its sha256 and the subset in the repository). bench/run_sampler.sh
+repeats every implementation, interleaved, which is how results/sampler/runs
+was made, and bench/summarize.py reports the median and interquartile range
+over runs.
 """
 import argparse
 import json

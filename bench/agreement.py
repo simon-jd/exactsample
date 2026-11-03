@@ -2,6 +2,11 @@
 captured logits, and the number of FP64 fallbacks the fused path needed.
 
     python bench/agreement.py --output results/agreement.json
+    python bench/agreement.py --capture results/logits/qwen3-8b-8x8.npz --output results/agreement-8x8.json
+
+The first uses the full 512-row capture (results/raw/logits, not in git: 155
+MB); the second the 64-row subset in the repository (bench/subset_logits.py),
+which runs the same six workloads from fewer distinct rows.
 """
 import argparse
 import re

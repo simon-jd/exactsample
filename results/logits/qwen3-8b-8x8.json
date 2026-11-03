@@ -1,0 +1,30 @@
+{
+  "model": "Qwen/Qwen3-8B",
+  "revision": "b968826d9c46dd6066d109eabc6255188de91218",
+  "transformers": "5.17.0",
+  "torch": "2.13.0+cu130",
+  "prompts": [
+    "Explain why the sky is blue to a ten-year-old.",
+    "Write a Python function that merges two sorted lists.",
+    "What are the main causes of inflation?",
+    "Summarize the plot of Hamlet in three sentences.",
+    "Give me a recipe for a quick vegetarian dinner.",
+    "How does a transformer neural network work?",
+    "Translate 'The weather is lovely today' into French and German.",
+    "What is the difference between TCP and UDP?"
+  ],
+  "steps": 8,
+  "vocab": 151936,
+  "sampling": {
+    "temperature": 0.7,
+    "seed": 0
+  },
+  "rows": 64,
+  "sha256": "08049ef75adbbb67d400a4e5457a216d4927bf2aa3d3d6cfafc5f5c8b5fc1806",
+  "subset_of": {
+    "rows": 512,
+    "sha256": "7ce5e6575abc529fbbd8bfd3636e6389f448ad3f24f84443a9bf8d51e2f07d2a",
+    "sequences": 8,
+    "steps": 8
+  }
+}

@@ -100,6 +100,13 @@ requests, 352 rows, with and without 4-token drafts) through the fused path
 and the FP64 oracle: every request's tokens, accepted length and status are
 identical, and the fused path needed no FP64 fallback. The benchmark records
 the fallback counter for every exactsample cell below; it is zero in all 24.
+The capture is not in the repository (below), but a 64-row subset of it is,
+and `python bench/agreement.py --capture results/logits/qwen3-8b-8x8.npz
+--output results/agreement-8x8.json` runs the same check from a clone: the
+same six workloads, 192 requests and 352 rows, drawn from 64 distinct
+captured rows instead of 112. They are all identical too, with no fallback
+(`results/agreement-8x8.json`). That is the same check on less data; the
+figures above are the full capture's.
 
 The statistical plan passes on the CUDA path in all ten cells (sampling,
 temperature, top-k, a top-p boundary, min-p, one-hot and full-q verification,
@@ -111,7 +118,19 @@ report no errors (`results/sanitizer/summary.json`).
 ## Benchmarks
 
 `bench/capture_logits.py` records 512 decode-step logit rows from Qwen3-8B
-(32 prompts x 16 steps, sampled at T=0.7). `bench/sampler.py` builds ordinary
+(32 prompts x 16 steps, sampled at T=0.7). The file, 155 MB and not in git,
+has sha256 `7ce5e6575abc529fbbd8bfd3636e6389f448ad3f24f84443a9bf8d51e2f07d2a`;
+in the environment of `bench/requirements.txt`,
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TRITON_PTXAS_PATH=$(command -v ptxas) python bench/capture_logits.py \
+  --model ~/.cache/huggingface/hub/models--Qwen--Qwen3-8B/snapshots/b968826d9c46dd6066d109eabc6255188de91218 \
+  --output results/raw/logits/qwen3-8b.npz
+```
+
+regenerates it byte for byte on this machine (checked 2026-11-02).
+`results/logits/qwen3-8b-8x8.npz` (14 MB, `bench/subset_logits.py`) holds its
+first 8 prompts x 8 steps. `bench/sampler.py` builds ordinary
 requests (one row each) and 4-draft verification requests (five consecutive
 steps of one prompt, the tokens actually sampled as drafts) from them, and
 times each implementation in its own process:

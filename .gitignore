@@ -17,6 +17,8 @@ dist/
 # except the results the README cites
 !/results/sampler/
 !/results/agreement.json
+!/results/agreement-8x8.json
+!/results/logits/
 !/results/stat-cuda.json
 !/results/stat-cuda-predicate.json
 !/results/gumbel-bound.json
