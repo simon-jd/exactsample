@@ -36,10 +36,12 @@ def main():
                    sys.executable, '-m', 'unittest', 'tests.test_cuda', 'tests.test_fused', '-v']
         completed = subprocess.run(command, env=environment, capture_output=True, text=True)
         (args.output_dir / f'{tool}-test.log').write_text(completed.stdout + completed.stderr)
-        shown = [os.path.relpath(c, ROOT) if os.path.isabs(c) and c.startswith(str(ROOT)) else c for c in command]
+        # The interpreter is shown as 'python' (its version is in the report), the rest relative to the checkout.
+        shown = ['python' if c == sys.executable else
+                 os.path.relpath(c, ROOT) if os.path.isabs(c) and c.startswith(str(ROOT)) else c for c in command]
         results.append({'tool': tool, 'command': shown, 'returncode': completed.returncode})
     report = {'status': 'failed' if any(r['returncode'] for r in results) else 'passed',
-              'tools_run': results, 'qualification': True}
+              'python': sys.version.split()[0], 'torch': torch.__version__, 'tools_run': results, 'qualification': True}
     (args.output_dir / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report))
     return int(report['status'] == 'failed')

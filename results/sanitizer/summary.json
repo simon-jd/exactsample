@@ -1,5 +1,7 @@
 {
   "status": "passed",
+  "python": "3.12.15",
+  "torch": "2.13.0+cu130",
   "tools_run": [
     {
       "tool": "memcheck",
@@ -11,7 +13,7 @@
         "1",
         "--log-file",
         "results/sanitizer/memcheck.log",
-        ".envs/p1-A/bin/python",
+        "python",
         "-m",
         "unittest",
         "tests.test_cuda",
@@ -30,7 +32,7 @@
         "1",
         "--log-file",
         "results/sanitizer/racecheck.log",
-        ".envs/p1-A/bin/python",
+        "python",
         "-m",
         "unittest",
         "tests.test_cuda",
@@ -49,7 +51,7 @@
         "1",
         "--log-file",
         "results/sanitizer/initcheck.log",
-        ".envs/p1-A/bin/python",
+        "python",
         "-m",
         "unittest",
         "tests.test_cuda",
@@ -68,7 +70,7 @@
         "1",
         "--log-file",
         "results/sanitizer/synccheck.log",
-        ".envs/p1-A/bin/python",
+        "python",
         "-m",
         "unittest",
         "tests.test_cuda",
