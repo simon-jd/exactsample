@@ -1,0 +1,11 @@
+run,impl,sm_mhz,mem_mhz,temp_c,power_w,util_pct,mem_used_mib
+1,exactsample,2520, 10251, 50, 58.41, 0, 303
+2,exactsample,2520, 10501, 53, 71.11, 0, 304
+3,exactsample,2520, 10501, 57, 62.03, 0, 303
+4,exactsample,2775, 10501, 61, 87.73, 36, 303
+5,exactsample,2775, 10501, 60, 76.14, 0, 303
+6,exactsample,2775, 10501, 67, 100.70, 88, 303
+7,exactsample,2775, 10501, 67, 102.53, 0, 303
+8,exactsample,2775, 10501, 68, 129.52, 100, 303
+9,exactsample,2775, 10501, 67, 103.15, 68, 303
+10,exactsample,2775, 10501, 68, 173.91, 88, 303
