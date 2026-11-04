@@ -126,7 +126,7 @@ full-row path.
 
 **Cost.** A launch with nothing to do still costs 1.4 to 1.6 us, and a
 temperature-only call is five launches with two passes over each row. Up to
-eight such requests, vLLM's single Gumbel kernel takes 1.25 to 1.85 times
+eight such requests, vLLM's single Gumbel kernel takes 1.3 to 1.8 times
 less GPU time (10 vs 17 us for one request, 32 vs 49 us for eight 5-row
 verifications). From 32 requests exactsample is level or ahead (84 vs 179 us
 at 128), and its call time, which adds host overhead, is lower in every cell:

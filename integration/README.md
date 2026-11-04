@@ -106,10 +106,10 @@ Qwen3-8B:
 | | 16 | **18.05** [18.04, 18.06] | 18.07 [18.07, 18.08] |
 | | 64 | **20.76** [20.76, 20.78] | 20.81 [20.81, 20.82] |
 
-With top-k and top-p, exactsample lowers TPOT by 1.8 to 2.5% on Qwen3-1.7B. At
+With top-k and top-p, exactsample lowers TPOT by 1.7 to 2.5% on Qwen3-1.7B. At
 64 requests output throughput rises from 9,852 to 10,093 tokens/s. On Qwen3-8B
 the reduction is 0.5 to 0.7%. **With temperature alone, decoding is slower
-with exactsample**: by 0.5 to 0.8% on Qwen3-1.7B (10,167 against 10,091
+with exactsample**: by 0.4 to 0.7% on Qwen3-1.7B (10,167 against 10,091
 tokens/s at 64 requests) and by 0.1 to 0.2% on Qwen3-8B. These are the cases
 where vLLM's one-launch Gumbel kernel is faster on GPU time. The bridge from
 before the host-sync change made every Qwen3-1.7B cell 13 to 21% slower
