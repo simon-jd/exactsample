@@ -1,53 +1,88 @@
 # exactsample: batch-invariant sampling and speculative verification in CUDA
 
 A CUDA library (a PyTorch custom op, with a vLLM integration) for the last
-step of LLM decoding: sampling the next token from logits, and verifying a
-speculative-decoding draft against the target model's logits.
+step of LLM decoding: sampling the next token, and verifying a speculative
+draft against the target model's logits.
+
+FP32 rounding, tie order and the kernel's split of the work can change which
+tokens survive a top-k or top-p cut. exactsample defines every decision in
+FP64, computes in FP32 with an error bound, and recomputes in FP64 only what
+the bound does not settle; each random draw is keyed by `(seed, request
+stream, absolute position)`. A request gets the FP64 reference's tokens
+whatever else is in the batch (192 of 192 requests in `results/agreement.json`).
+
+**Scope:** one RTX 4090 (sm_89), clocks not locked. Kernel timings use 512
+logit rows captured from Qwen3-8B decoding (not synthetic); end-to-end runs
+serve Qwen3-1.7B and Qwen3-8B in vLLM 0.31.
+
+| Median GPU time per call, us, 10 runs | exactsample | vLLM 0.31 | FlashInfer 0.7 |
+|---|---:|---:|---:|
+| T=0.6, top-k 20, top-p 0.95 (Qwen3's settings), 128 requests | **96** | 455 | 626 |
+| Qwen3's settings, 64 requests verifying 4 drafts each | **382** | 1,535 | 2,924 |
+| T=1.0 only, 128 requests | **84** | 179 | 172 |
+| T=1.0 only, 1 request | 17 | **10** | 26 |
+| T=1.0 only, 8 requests verifying 4 drafts each | 49 | **32** | 91 |
+| T=0.7, top-p 0.9, 1 request | 39 | 56 | **34** |
+
+Source: `results/sampler/summary.json` (`gpu_us.median`); every shape is in
+[Benchmarks](#benchmarks). vLLM's sampler is the one the integration replaces,
+and FlashInfer is a widely used standalone GPU sampling library with the same
+filters and draft verification; no hand-tuned radix top-k kernel was compared.
+
+## Limitations
+
+- Up to eight temperature-only requests take 1.3 to 1.8 times vLLM's GPU time,
+  one top-p-only request 1.14 times FlashInfer's ([details](#where-exactsample-loses)).
+- End to end the gain is small: TPOT drops 0.5 to 2.5% with top-k and top-p,
+  and **rises 0.1 to 0.7% with temperature alone** ([details](#end-to-end-in-vllm)).
+- One GPU (sm_89) only; a top-k or top-p set of thousands of tokens is several times slower.
+- Batch invariance covers the sampler, not the model ([details](#batch-invariance)).
+- No CUDA graph capture; the vLLM bridge covers greedy draft models and ordinary sampling.
+
+## More
+
+- How it works: [below](#how-it-works), [docs/design.md](docs/design.md), and the
+  decisions with their costs in [docs/design-tradeoffs.md](docs/design-tradeoffs.md).
+- Results: [Correctness](#correctness), [Benchmarks](#benchmarks), [integration/](integration/README.md)
+  (vLLM), and [results/README.md](results/README.md) (each result file's commit and date).
+- Reproducing: [Use it](#use-it) and the commands under [Benchmarks](#benchmarks).
+
+Start here in the source:
+
+- `csrc/verify/fused.cuh`: the fused kernels (section index at the top)
+- `csrc/verify/verify.cu`: validation, the FP64 GPU reference path, finalize
+- `python/exactsample/cuda.py`: the Python API (`plan`, `verify`)
+- `python/exactsample/reference.py`: the FP64 NumPy reference
+- `docs/contract.md`: the semantics and per-request statuses
+- `tests/test_fused.py`: fused-path tests, including inputs that force each FP64 fallback
+
+## What it supports
+
+Temperature, top-k, top-p, min-p, grammar bitmasks and greedy decoding; ratio
+(Leviathan/Chen) and coupled verification; one-hot drafts and full proposal
+distributions; ragged batches, with a per-request error status instead of a
+failed batch.
 
 Every random draw is a pure function of `(seed, request stream, absolute
 position)` and the request's own logits. A request therefore produces the same
 tokens whatever else is in the batch, in whatever slot, however the kernel
-splits the work, and after preemption and recomputation. The tokens also
-match an FP64 reference implementation: the kernel computes in FP32 with an
-error bound and recomputes in FP64 the rare decision the bound does not settle.
+splits the work, and after preemption and recomputation.
 
-It supports temperature, top-k, top-p, min-p, grammar bitmasks and greedy
-decoding; ratio (Leviathan/Chen) and coupled verification; one-hot drafts and
-full proposal distributions; ragged batches, with a per-request error status
-instead of a failed batch.
+## What is new here
 
-**Results**
+Keying the noise by request and position is not new. vLLM's model-runner-v2
+sampler derives its Gumbel noise from a per-request seed and the position, and
+FlashInfer's samplers take a seed and an offset per request. vLLM's
+batch-invariant mode makes the model's logits independent of the batch.
 
-- **Exact.** On 192 requests built from captured Qwen3-8B logits (352 rows,
-  with and without 4-token drafts), every token, accepted length and status
-  equals the FP64 NumPy reference's, with no FP64 fallback needed. A
-  statistical plan fixed in advance (its hash recorded with each result)
-  passes in all ten cells, and the four
-  compute-sanitizer tools report no errors ([Correctness](#correctness)).
-- **Faster per call.** With Qwen3's recommended settings (T=0.6, top-k
-  20, top-p 0.95), a call for 128 requests takes 96 us of GPU time,
-  against 455 us for vLLM 0.31's sampler and 626 us for FlashInfer
-  0.7's fastest public path. Verifying 4 drafts for each of 64 requests takes
-  382 us against 1,535 and 2,924. Medians of 10 runs; L2-cold
-  times are in the tables. End to end in vLLM, where sampling is a small
-  part of a decode step, TPOT drops by only 0.5 to 2.5% with these
-  settings ([Limitations](#limitations)).
-- **Where it loses.** Temperature-only sampling of up to eight requests:
-  vLLM's single Gumbel kernel takes 10 us for one request against
-  17, because exactsample reads each row twice (statistics, then the
-  certified draw) in five launches. With top-p alone and one request,
-  FlashInfer is slightly faster (34 vs 39 us).
+What exactsample adds is that the decisions themselves are exact. Top-k and
+top-p cuts split ties by token ID; min-p and verification thresholds are
+settled against an FP64 definition. Equal logits and keys therefore give equal
+tokens on any batch layout and any kernel split.
 
-**What is new here.** Keying the noise by request and position is not: vLLM's
-model-runner-v2 sampler derives its Gumbel noise from a per-request seed and
-the position, and FlashInfer's samplers take a seed and an offset per request.
-vLLM's batch-invariant mode makes the model's logits independent of the
-batch. What exactsample adds is that the decisions themselves are exact:
-top-k and top-p cuts with ties split by token ID, min-p and verification
-thresholds settled against an FP64 definition, so equal logits and keys give
-equal tokens on any batch layout and any kernel split. It also gives each use
-of randomness its own substream (target draw, ratio acceptance, residual
-draw) and reports a status per request instead of failing the batch.
+It also gives each use of randomness its own substream (target draw, ratio
+acceptance, residual draw), and reports a status per request instead of
+failing the batch.
 
 ## How it works
 
@@ -58,24 +93,26 @@ their alternatives and costs. In short:
 - **Kernels.** A validation pass finds each row's maximum. Temperature-only
   rows are drawn in one streaming pass whose last block commits the result.
   For top-k and top-p rows, a histogram pass counts tokens by distance from the
-  maximum and a gather pass collects exactly the bins that hold the top k (or,
+  maximum, and a gather pass collects exactly the bins that hold the top k (or,
   for top-p, the largest prefix of at most 128 tokens). Per-row kernels finish
   the rest. The streaming kernels use at most 64 registers and split a row
   across up to 32 blocks for small batches.
 - **Two representations of the kept set.** Up to 256 tokens after top-k are
   sorted and processed in FP64 with the reference's formulas. Larger sets are a
-  predicate (an exact key cut plus min-p), evaluated per token in FP32.
+  predicate (an exact key cut plus min-p), evaluated per token in FP32. FP64
+  throughput on the RTX 4090 is 1/64 of FP32, which is why FP64 is confined to
+  small lists and fallbacks.
 - **Certified FP32.** Every FP32 score, weight and sum carries an error bound.
   A draw is decided when the winner's lower bound clears every other token's
-  upper bound, a ratio test when `u` falls outside the interval of `p/q`, a
-  threshold when the token is outside its bound; anything else is recomputed
-  in FP64. On the benchmark's real logits that never happened; the tests build
-  inputs that force each fallback.
+  upper bound. A ratio test is decided when `u` falls outside the interval of
+  `p/q`, a threshold when the token is outside its bound. Anything else is
+  recomputed in FP64. On the benchmark's real logits that never happened; the
+  tests build inputs that force each fallback.
 - **Pruning.** The greedy token's score bounds the winner's from below (the
   runner-up's, when the draft being verified is the greedy token and is
-  excluded from the residual draw), so a token whose logit plus the largest
-  possible Gumbel noise falls short is skipped without generating its noise.
-  A second, cheap bound (two fast logs) screens the rest before the accurate
+  excluded from the residual draw). A token whose logit plus the largest
+  possible Gumbel noise falls short is skipped without generating its noise. A
+  second, cheap bound (two fast logs) screens the rest before the accurate
   noise is computed.
 - **Exact selection.** Top-k and top-p cuts are exact, including ties at the
   boundary, which are split by token ID as the contract requires: radix select
@@ -92,19 +129,20 @@ their alternatives and costs. In short:
 | Batch invariance: alone, permuted, next to other requests, and at different slice counts | `tests/test_fused.py` |
 | Exact probability laws (rational arithmetic, every branch enumerated) for the verification algorithms | `reference/exact.py`, `tests/exact/` |
 | A statistical plan fixed in advance, its sha256 recorded in each result (G-tests against exact laws), 2M draws per cell, on small vocabularies (2 to 4 tokens, FP64 inputs) where the exact law is enumerable | `tests/stat/`, `tests/stat_plan.json`, `results/stat-cuda*.json` |
-| compute-sanitizer memcheck, racecheck, initcheck and synccheck over the CUDA tests (the full-vocabulary cases are skipped under the sanitizer, which would take hours) | `tests/sanitizer/run.py` |
+| compute-sanitizer memcheck, racecheck, initcheck and synccheck over the CUDA tests (the full-vocabulary cases are skipped under the sanitizer, which would take hours) | `tests/sanitizer/run.py`, `results/sanitizer/summary.json` |
 | Agreement on the captured Qwen3-8B logits | `bench/agreement.py`, `results/agreement.json` |
 
 `bench/agreement.py` runs six workloads from the captured logits (192
 requests, 352 rows, with and without 4-token drafts) through the fused path
-and the FP64 oracle: every request's tokens, accepted length and status are
+and the FP64 oracle. Every request's tokens, accepted length and status are
 identical, and the fused path needed no FP64 fallback. The benchmark records
 the fallback counter for every exactsample cell below; it is zero in all 24.
-The capture is not in the repository (below), but a 64-row subset of it is,
-and `python bench/agreement.py --capture results/logits/qwen3-8b-8x8.npz
---output results/agreement-8x8.json` runs the same check from a clone: the
-same six workloads, 192 requests and 352 rows, drawn from 64 distinct
-captured rows instead of 112. They are all identical too, with no fallback
+
+The capture is not in the repository ([Benchmarks](#benchmarks)), but a 64-row
+subset of it is. From a clone, `python bench/agreement.py --capture
+results/logits/qwen3-8b-8x8.npz --output results/agreement-8x8.json` runs the
+same six workloads, 192 requests and 352 rows, drawn from 64 distinct captured
+rows instead of 112. They are all identical too, with no fallback
 (`results/agreement-8x8.json`). That is the same check on less data; the
 figures above are the full capture's.
 
@@ -112,15 +150,23 @@ The statistical plan passes on the CUDA path in all ten cells (sampling,
 temperature, top-k, a top-p boundary, min-p, one-hot and full-q verification,
 accepted length; smallest p-value 0.44). Run with lists disabled
 (`--list-max 0`, every row through the FP32 predicate path), it produces
-identical counts, as exactness requires. The four compute-sanitizer tools
-report no errors (`results/sanitizer/summary.json`).
+identical counts, as exactness requires.
+
+The four compute-sanitizer tools report no errors. The record is
+`results/sanitizer/summary.json`: each tool's command and exit status. The
+per-tool logs it names are not committed. `python tests/sanitizer/run.py`,
+run from the repository root on a GPU with the library built, reruns the four
+tools and writes the logs and a new summary to `results/sanitizer/`.
+[results/README.md](results/README.md) says which kernel each recorded run
+checked.
 
 ## Benchmarks
 
 `bench/capture_logits.py` records 512 decode-step logit rows from Qwen3-8B
-(32 prompts x 16 steps, sampled at T=0.7). The file, 155 MB and not in git,
-has sha256 `7ce5e6575abc529fbbd8bfd3636e6389f448ad3f24f84443a9bf8d51e2f07d2a`;
-in the environment of `bench/requirements.txt`,
+(32 prompts x 16 steps, sampled at T=0.7). The file is 155 MB and not in git.
+Its sha256 is `7ce5e6575abc529fbbd8bfd3636e6389f448ad3f24f84443a9bf8d51e2f07d2a`,
+and in the environment of `bench/requirements.txt` this command regenerates it
+byte for byte on the measuring machine:
 
 ```bash
 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TRITON_PTXAS_PATH=$(command -v ptxas) python bench/capture_logits.py \
@@ -128,12 +174,11 @@ HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TRITON_PTXAS_PATH=$(command -v ptxas) py
   --output results/raw/logits/qwen3-8b.npz
 ```
 
-regenerates it byte for byte on this machine (checked 2026-11-02).
 `results/logits/qwen3-8b-8x8.npz` (14 MB, `bench/subset_logits.py`) holds its
-first 8 prompts x 8 steps. `bench/sampler.py` builds ordinary
-requests (one row each) and 4-draft verification requests (five consecutive
-steps of one prompt, the tokens actually sampled as drafts) from them, and
-times each implementation in its own process:
+first 8 prompts x 8 steps. `bench/sampler.py` builds ordinary requests (one
+row each) and 4-draft verification requests (five consecutive steps of one
+prompt, the tokens actually sampled as drafts) from them, and times each
+implementation in its own process:
 
 - **exactsample**: this library, with its plan (a fixed workspace) made once.
 - **vLLM 0.31, model-runner-v2**: the sampler's own sequence for seeded
@@ -142,8 +187,8 @@ times each implementation in its own process:
   kernel, then its Triton Gumbel sampler or rejection sampler.
 - **FlashInfer 0.7.0.post1**: both public entry points, scaled logits into
   `sampling_from_logits` or `top_k_top_p_sampling_from_logits`, and
-  `sampling.softmax` with per-row temperature into the probability samplers;
-  each cell shows the faster of the two (named in
+  `sampling.softmax` with per-row temperature into the probability samplers.
+  Each cell shows the faster of the two (named in
   `results/sampler/summary.json`). Verification is softmax, the
   renormalization APIs and `chain_speculative_sampling` on a view of the
   rows, with a persistent one-hot draft buffer.
@@ -155,19 +200,27 @@ so only speed is compared here; contract differences are covered by
 `conformance/`. vLLM skips its top-k/top-p kernels when no request uses
 them, and exactsample is told the same (`top_k_top_p`, below).
 
-`bench/run_sampler.sh` runs every implementation 10 times, interleaved,
-each run a fresh process holding the GPU lock. A run reports, per call, the
-GPU time (kernel time from CUPTI, averaged over 20 profiled calls), the call
-time (CUDA events over 100 back-to-back calls, so launch overhead included)
-and a cold call (median of 30 calls, each after writing 256 MB to evict the
-72 MB L2). The tables give the median GPU time over runs, its interquartile
-range, and the cold-call median in brackets. Run-to-run spread is small: the
-interquartile range is within 1% of the median in 69 of 72 cells and 1.55% in
-one more; in the other two it is 10.03% (exactsample, 32 x 5, and FlashInfer,
-1 x 5, both with Qwen3's settings). Clocks were not locked (no administrator rights on the machine,
-whose GPU also drives a desktop); the SM clock at the start of each run,
+`bench/run_sampler.sh` runs every implementation 10 times, interleaved, each
+run a fresh process holding the GPU lock. A run reports three times per call:
+
+- the GPU time: kernel time from CUPTI, averaged over 20 profiled calls;
+- the call time: CUDA events over 100 back-to-back calls, so launch overhead
+  included;
+- a cold call: median of 30 calls, each after writing 256 MB to evict the
+  72 MB L2.
+
+The tables give the median GPU time over runs, its interquartile range, and
+the cold-call median in brackets.
+
+Run-to-run spread is small. The interquartile range is within 1% of the
+median in 69 of 72 cells, and 1.55% in one more. In the other two it is
+10.03% (exactsample, 32 x 5, and FlashInfer, 1 x 5, both with Qwen3's
+settings).
+
+Clocks were not locked: there are no administrator rights on the machine,
+whose GPU also drives a desktop. The SM clock at the start of each run,
 recorded in `results/sampler/runs/clocks.csv`, was 2,805 or 2,820 MHz in 39
-of the 40 runs (one sample caught the GPU still at its 210 MHz idle clock).
+of the 40 runs; one sample caught the GPU still at its 210 MHz idle clock.
 
 ### T=0.6, top-k 20, top-p 0.95 (Qwen3's recommended settings): median GPU time per call, us (IQR); cold L2 in brackets
 
@@ -211,6 +264,38 @@ of the 40 runs (one sample caught the GPU still at its 210 MHz idle clock).
 Per-kernel times for every cell and run are in `results/sampler/runs/`, and
 `python bench/summarize.py results/sampler/runs` regenerates the tables.
 
+### Where exactsample loses
+
+Temperature-only sampling of up to eight requests (the 1 x 1, 8 x 1, 1 x 5
+and 8 x 5 cells at T=1.0) takes 1.3 to 1.8 times vLLM's GPU time: 17 against
+10 us for one request. vLLM draws with a single Gumbel kernel, while
+exactsample reads each row twice (statistics, then the certified draw) in five
+launches. With top-p alone and one request, FlashInfer is slightly faster: 34
+against 39 us, 1.14 times less. [docs/design-tradeoffs.md](docs/design-tradeoffs.md)
+explains the choice.
+
+A request with a very large top-k (thousands) or a top-p nucleus of thousands
+of tokens is finished by one block per row, and is several times slower than
+the common cases above.
+
+### End to end in vLLM
+
+End to end, the kernel speedups shrink to a few percent at most. Sampling is
+0.2 to 1.7% of a decode step with exactsample, and 0.1 to 5.8% with vLLM's
+sampler. On Qwen3-1.7B and Qwen3-8B with 1 to 64 requests and no draft model,
+exactsample lowers TPOT by 0.5 to 2.5% with top-k and top-p. **With
+temperature alone it raises TPOT by 0.1 to 0.7%.** The runs, five per arm,
+are in [integration/](integration/README.md#end-to-end-decoding).
+
+### Batch invariance
+
+Batch invariance covers the sampler, not the model. Without
+`VLLM_BATCH_INVARIANT=1`, a request's logits, and so its tokens, depend on its
+batch with either sampler. With batch-invariant kernels, vLLM's own sampler is
+also invariant for seeded requests. exactsample adds unseeded requests keeping
+their tokens across preemption
+([integration/](integration/README.md#does-a-request-depend-on-its-batch)).
+
 ## Use it
 
 ```bash
@@ -236,10 +321,14 @@ verify(logits, cu_rows, draft_ids,           # bf16 [rows, V], int64 [R+1], int6
 A plan owns a fixed workspace (12 KB per row) and its outputs; calls on one
 stream reuse them without allocation. `verify(..., top_k_top_p=False)` says
 that no request has a top-k or top-p (vLLM's bridge knows this from its
-host-side parameters): the three kernels that only serve those filters are not
-launched, and the result is the same. `docs/contract.md` defines the semantics
-and statuses, `docs/rng.md` the RNG address. The vLLM integration is described
-in [integration/](integration/README.md).
+host-side parameters). The three kernels that only serve those filters are
+then not launched, and the result is the same.
+
+`docs/contract.md` defines the semantics and statuses, `docs/rng.md` the RNG
+address. The vLLM integration is described in [integration/](integration/README.md).
+CUDA graph capture of the call is not supported. The vLLM bridge covers greedy
+draft models and ordinary sampling; other speculative methods and sampling
+features fall back to vLLM's own path.
 
 ## Layout
 
@@ -253,29 +342,4 @@ in [integration/](integration/README.md).
 | `bench/` | logit capture, benchmark, agreement check |
 | `conformance/` | adapters for FlashInfer and vLLM |
 | `vllm-patches/`, `integration/` | the vLLM 0.31 patch and its checks |
-
-## Limitations
-
-- Built and measured on one RTX 4090 (sm_89). FP64 throughput there is 1/64
-  of FP32, which is why FP64 is confined to small lists and fallbacks.
-- A request with a very large top-k (thousands) or a top-p nucleus of
-  thousands of tokens is finished by one block per row and is several times
-  slower than the common cases above.
-- Up to eight temperature-only requests take 1.25 to 1.85 times vLLM's GPU
-  time, and one top-p-only request takes 1.15 times FlashInfer's
-  ([docs/design-tradeoffs.md](docs/design-tradeoffs.md)).
-- End to end in vLLM, the kernel speedups shrink to a few percent at most,
-  because sampling is 0.2 to 1.7% of a decode step with exactsample and 0.1 to
-  5.8% with vLLM's sampler. On Qwen3-1.7B and Qwen3-8B with 1 to 64 requests and no draft model,
-  exactsample lowers TPOT by 0.5 to 2.5% with top-k and top-p. **With
-  temperature alone it raises TPOT by 0.1 to 0.8%**
-  ([integration/](integration/README.md#end-to-end-decoding)).
-- Batch invariance covers the sampler, not the model: without
-  `VLLM_BATCH_INVARIANT=1`, a request's logits, and so its tokens, depend on
-  its batch with either sampler. With batch-invariant kernels, vLLM's own
-  sampler is also invariant for seeded requests. exactsample adds unseeded
-  requests keeping their tokens across preemption
-  ([integration/](integration/README.md#does-a-request-depend-on-its-batch)).
-- CUDA graph capture of the call is not supported.
-- The vLLM bridge covers greedy draft models and ordinary sampling; other
-  speculative methods and sampling features fall back to vLLM's own path.
+| `results/` | the committed results ([results/README.md](results/README.md)) |
