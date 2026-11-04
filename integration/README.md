@@ -76,7 +76,8 @@ admitted to the same step. Each arm runs in its own engine:
 - **off**: vLLM's sampler (`EXACTSAMPLE_DECODE=0`).
 - **on**: exactsample.
 - **before**: exactsample with the bridge from before the host-sync change
-  (commit fae7b39's `python/`, passed as `E2E_OLD_PYTHONPATH`; see
+  (the `python/` tree of the commit [results/README.md](../results/README.md)
+  names, passed as `E2E_OLD_PYTHONPATH`; see
   `bench/run_vllm_e2e.sh`).
 
 The engines use CUDA graphs, torch.compile and async scheduling. Each arm has

@@ -15,6 +15,7 @@ dist/
 # Generated run output and local runtimes stay on disk, not in git.
 /results/*
 # except the results the README cites
+!/results/README.md
 !/results/sampler/
 !/results/agreement.json
 !/results/agreement-8x8.json
