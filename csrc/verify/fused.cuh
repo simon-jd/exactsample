@@ -15,6 +15,23 @@
 //
 // Every row is processed the same way whatever else is in the batch, and
 // every reduction has a fixed order, so results are batch invariant.
+//
+// Sections, by line (docs/design-tradeoffs.md says why fused_rows stays one body):
+//    45  constants and error bounds
+//    69  input types, loads and the row view (In, RowView)
+//   151  warp and block reductions, double-double sums (Best, Pick, DD)
+//   246  Gumbel noise (gumbel32, gumbel_bound, gumbel64)
+//   263  per-row state in the workspace (Cut, Part, StatsPart, DrawPart)
+//   395  streaming kernels: row_stats, row_scan, row_hist, row_gather
+//   804  fused_rows, one 512-thread block per row
+//   859    the row's state, and which kernel finishes it
+//   877    the proposal q of full-q drafts; greedy rows
+//   935    temperature and min-p; exact top-k and top-p cuts
+//  1251    List part: at most LIST_MAX tokens, in FP64
+//  1447    Full-row part: certified FP32 sums and draws,
+//            FP64 rescoring, the ratio test, the top-p chunk scan
+//  1786    Sliced part: merging row_scan's slices
+//  1814  launch_parts and launch_rows (host)
 #pragma once
 #include "device.cuh"
 #include <algorithm>
