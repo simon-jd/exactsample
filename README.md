@@ -9,13 +9,18 @@ tokens survive a top-k or top-p cut. exactsample defines every decision in
 FP64, computes in FP32 with an error bound, and recomputes in FP64 only what
 the bound does not settle; each random draw is keyed by `(seed, request
 stream, absolute position)`. A request gets the FP64 reference's tokens
-whatever else is in the batch (192 of 192 requests in `results/agreement.json`).
+whatever else is in the batch (192 of 192 requests in `results/agreement.json`),
+and on an A10 those requests return the RTX 4090's outputs bit for bit
+(`results/a10/compare-full.json`).
 
-**Scope:** one RTX 4090 (sm_89), clocks not locked. Kernel timings use 512
+**Scope:** one RTX 4090 (sm_89), clocks not locked; the tests, the agreement
+check and the kernel timings also ran on one NVIDIA A10-24Q vGPU (sm_86) on a
+Snowflake trial compute pool, driver 570 with the CUDA 13.2
+forward-compatibility driver ([On an A10](#on-an-a10)). Kernel timings use 512
 logit rows captured from Qwen3-8B decoding (not synthetic); end-to-end runs
-serve Qwen3-1.7B and Qwen3-8B in vLLM 0.31.
+serve Qwen3-1.7B and Qwen3-8B in vLLM 0.31, on the 4090.
 
-| Median GPU time per call, us, 10 runs | exactsample | vLLM 0.31 | FlashInfer 0.7 |
+| RTX 4090: median GPU time per call, us, 10 runs | exactsample | vLLM 0.31 | FlashInfer 0.7 |
 |---|---:|---:|---:|
 | T=0.6, top-k 20, top-p 0.95 (Qwen3's settings), 128 requests | **96** | 455 | 626 |
 | Qwen3's settings, 64 requests verifying 4 drafts each | **382** | 1,535 | 2,924 |
@@ -28,14 +33,19 @@ Source: `results/sampler/summary.json` (`gpu_us.median`); every shape is in
 [Benchmarks](#benchmarks). vLLM's sampler is the one the integration replaces,
 and FlashInfer is a widely used standalone GPU sampling library with the same
 filters and draft verification; no hand-tuned radix top-k kernel was compared.
+The A10 has no CUPTI, so its table, [On an A10](#on-an-a10), uses cold-call times.
 
 ## Limitations
 
 - Up to eight temperature-only requests take 1.3 to 1.8 times vLLM's GPU time,
   one top-p-only request 1.14 times FlashInfer's ([details](#where-exactsample-loses)).
+  On the A10, by cold-call time, three of those cells lose by 1.07 to 1.46 times
+  and the top-p one by 1.29 times ([details](#on-an-a10)).
 - End to end the gain is small: TPOT drops 0.5 to 2.5% with top-k and top-p,
   and **rises 0.1 to 0.7% with temperature alone** ([details](#end-to-end-in-vllm)).
-- One GPU (sm_89) only; a top-k or top-p set of thousands of tokens is several times slower.
+- Two GPUs only, an RTX 4090 and an A10 vGPU. The sanitizer runs, the kernel GPU
+  times and the end-to-end vLLM runs are the 4090's; the A10 has no CUPTI or
+  compute-sanitizer. A top-k or top-p set of thousands of tokens is several times slower.
 - Batch invariance covers the sampler, not the model ([details](#batch-invariance)).
 - No CUDA graph capture; the vLLM bridge covers greedy draft models and ordinary sampling.
 
@@ -43,8 +53,9 @@ filters and draft verification; no hand-tuned radix top-k kernel was compared.
 
 - How it works: [below](#how-it-works), [docs/design.md](docs/design.md), and the
   decisions with their costs in [docs/design-tradeoffs.md](docs/design-tradeoffs.md).
-- Results: [Correctness](#correctness), [Benchmarks](#benchmarks), [integration/](integration/README.md)
-  (vLLM), and [results/README.md](results/README.md) (each result file's commit and date).
+- Results: [Correctness](#correctness), [Benchmarks](#benchmarks), [On an A10](#on-an-a10),
+  [integration/](integration/README.md) (vLLM), and [results/README.md](results/README.md)
+  (each result file's commit and date).
 - Reproducing: [Use it](#use-it) and the commands under [Benchmarks](#benchmarks).
 
 Start here in the source:
@@ -131,6 +142,7 @@ their alternatives and costs. In short:
 | A statistical plan fixed in advance, its sha256 recorded in each result (G-tests against exact laws), 2M draws per cell, on small vocabularies (2 to 4 tokens, FP64 inputs) where the exact law is enumerable | `tests/stat/`, `tests/stat_plan.json`, `results/stat-cuda*.json` |
 | compute-sanitizer memcheck, racecheck, initcheck and synccheck over the CUDA tests (the full-vocabulary cases are skipped under the sanitizer, which would take hours) | `tests/sanitizer/run.py`, `results/sanitizer/summary.json` |
 | Agreement on the captured Qwen3-8B logits | `bench/agreement.py`, `results/agreement.json` |
+| The same tests, agreement outputs and Gumbel report on an A10 vGPU (sm_86) as on the RTX 4090 | `results/a10/check/`, `results/a10/compare-*.json` |
 
 `bench/agreement.py` runs six workloads from the captured logits (192
 requests, 352 rows, with and without 4-token drafts) through the fused path
@@ -145,6 +157,22 @@ same six workloads, 192 requests and 352 rows, drawn from 64 distinct captured
 rows instead of 112. They are all identical too, with no fallback
 (`results/agreement-8x8.json`). That is the same check on less data; the
 figures above are the full capture's.
+
+The same build (one `exactsample_cuda.so` with sm_86 and sm_89 code) was run
+on one NVIDIA A10-24Q vGPU (sm_86) on a Snowflake trial compute pool, driver
+570 with the CUDA 13.2 forward-compatibility driver. With the CUDA tests
+required, the suite gives 96 passed and 8 skipped, the same vLLM-source checks
+skipped as on the 4090 (`results/a10/check/pytest.log`). On both captures the
+agreement reports are byte-identical to the 4090's: 192 of 192 requests match
+the oracle, with no FP64 fallback. `bench/agreement.py --outputs` saved the
+fused path's tokens, accepted lengths, statuses and paths on each GPU, and
+`bench/compare_outputs.py` finds every array byte-identical, 192 of 192
+requests per capture (`results/a10/compare-8x8.json`,
+`results/a10/compare-full.json`). The exhaustive Gumbel check writes the same
+report as `results/gumbel-bound.json`. The agreement check runs only
+exactsample, so it says nothing about vLLM's or FlashInfer's samplers on the
+two GPUs. compute-sanitizer does not run on this vGPU, so the sanitizer
+results are the 4090's only.
 
 The statistical plan passes on the CUDA path in all ten cells (sampling,
 temperature, top-k, a top-p boundary, min-p, one-hot and full-q verification,
@@ -277,6 +305,45 @@ explains the choice.
 A request with a very large top-k (thousands) or a top-p nucleus of thousands
 of tokens is finished by one block per row, and is several times slower than
 the common cases above.
+
+### On an A10
+
+The benchmark also ran on one NVIDIA A10-24Q vGPU (sm_86) on a Snowflake trial
+compute pool, driver 570 with the CUDA 13.2 forward-compatibility driver. The
+capture, the package versions of `bench/requirements.txt`, the CUDA 13.2
+compiler for FlashInfer's and Triton's JIT, and the procedure were the 4090's:
+10 runs per implementation, interleaved. One warm-up round ran first and is
+left out of the summary (`results/a10/sampler/runs/warmup/`). CUPTI records
+no kernels on this vGPU (`bench/sampler.py --no-cupti`), so there is no GPU
+time. The table gives the cold-call time: one call, timed with CUDA events,
+after writing 256 MB to evict the 6 MB L2. Clocks could not be locked; the SM
+clock read 1,695 MHz before every run.
+
+| A10: median cold-call time per call, us, 10 runs | exactsample | vLLM 0.31 | FlashInfer 0.7 |
+|---|---:|---:|---:|
+| T=0.6, top-k 20, top-p 0.95 (Qwen3's settings), 128 requests | **361** | 1,463 | 1,736 |
+| Qwen3's settings, 64 requests verifying 4 drafts each | **809** | 3,453 | 7,445 |
+| T=1.0 only, 128 requests | **287** | 487 | 458 |
+| T=1.0 only, 1 request | 36 | **26** | 49 |
+| T=1.0 only, 8 requests verifying 4 drafts each | **142** | 158 | 331 |
+| T=0.7, top-p 0.9, 1 request | 81 | 110 | **63** |
+
+Source: `results/a10/sampler/summary.json` (`cold_us.median`);
+`python bench/summarize.py results/a10/sampler/runs --metric cold_us` prints
+all 24 cells. The interquartile range is at most 3.3% of the median, and
+within 1% in 59 of 72 cells. Cold-call times include reading the logits from
+DRAM, so they are not comparable with the 4090's GPU times.
+
+exactsample loses 4 of the 24 cells. vLLM is faster for one temperature-only
+request (26 against 36 us), one such request verifying 4 drafts (39 against
+57) and eight such requests (47 against 50). FlashInfer is faster for one
+top-p-only request (63 against 81 us). Eight temperature-only requests
+verifying 4 drafts, a loss on the 4090, are a win here (142 against 158 us).
+
+Back-to-back calls (`call_us`, launch overhead included) reverse vLLM's three
+wins: its three cells take 2.4 to 4.6 times their cold-call time, 110 us for
+one request against exactsample's 42. FlashInfer's top-p cell stays ahead, 61
+against 73 us.
 
 ### End to end in vLLM
 

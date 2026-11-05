@@ -22,6 +22,18 @@ ignored by `.gitignore` and stays on the measuring machine.
 | `e2e/timed/` | 35049b4 (code d4e6295) | 2026-11-01 | TPOT and throughput in vLLM 0.31 with vLLM's sampler (off), exactsample (on) and, on Qwen3-1.7B, the bridge from before the host-sync change (before: the `python/` tree of fae7b39); Qwen3-1.7B with and without a draft, Qwen3-8B | 5 per arm, interleaved |
 | `e2e/profile/` | 35049b4 (code d4e6295) | 2026-11-01 | sampling's share of a decode step in the same cells, profiled | 1 per arm |
 | `determinism/` | 17cb97f (code d4e6295) | 2026-11-01 | whether a request's tokens depend on its batch, for both samplers, with and without vLLM's batch-invariant kernels: three batch mixes with a large KV cache, preemption with a small one | 1 per sampler, mode and KV size (8 files) |
+| `a10/check/` | cd54233 (code d5322a9) | 2026-11-04 | on one NVIDIA A10-24Q vGPU (sm_86) on a Snowflake trial compute pool, driver 570 with the CUDA 13.2 forward-compatibility driver, the library built at e047ab8 for sm_86 and sm_89 (its sha256 is in `report.json`): the test suite with the CUDA tests required (96 passed, 8 skipped), `bench/agreement.py --outputs` on both captures, and the exhaustive Gumbel check | 1 |
+| `a10/rtx4090/` | cd54233 | 2026-11-04 | `bench/agreement.py --outputs` on the RTX 4090 with the same library, both captures | 1 |
+| `a10/compare-8x8.json`, `a10/compare-full.json` | cd54233 | 2026-11-04 | `bench/compare_outputs.py`, the A10's outputs against the 4090's: 192 of 192 requests identical per capture, every array byte-identical | – |
+| `a10/sampler/` | cd54233 (code d5322a9) | 2026-11-04 | `bench/sampler.py --no-cupti` on the A10: call and cold-call times of the same implementations, 3 settings x 8 shapes; `summary.json` is `bench/summarize.py --metric cold_us`, which leaves out the warm-up round in `runs/warmup/` | 10 per implementation, interleaved (40 runs), after 1 warm-up round |
+| `a10/jobs/` | cd54233 | 2026-11-04 | the two Snowflake ML job scripts that produced `check/` and `sampler/` | – |
+
+The A10 jobs ran on 2026-11-05 (UTC). Each job prints its output files
+base64-encoded, with their sizes and sha256, in `job.log`, which `report.json`
+accompanies; the files under `check/` and `sampler/` were decoded from it.
+That CUPTI records no kernels and compute-sanitizer does not run on this vGPU
+("GPU debugging features are disabled") comes from separate probe jobs on the
+same compute pool that day, whose output is not in this repository.
 
 The sanitizer's per-tool logs (`<tool>.log`, `<tool>-test.log`) are not
 committed; `summary.json` records each tool's command and exit status. Run
