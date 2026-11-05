@@ -11,6 +11,8 @@ the same torch op. Reported per call:
   call_us  CUDA-event time over 100 back-to-back calls, logits in L2 as they
            are right after the LM head; includes host launch overhead;
   cold_us  median event time of one call after the L2 has been flushed.
+With --no-cupti (for GPUs where CUPTI records no kernels, such as the A10
+vGPU in results/a10/) gpu_us and the per-kernel times are null.
 
     python bench/sampler.py --impl exactsample --run 1 --output OUT/exactsample-1.jsonl
     python bench/sampler.py --impl flashinfer:probs --run 1 --output OUT/flashinfer-probs-1.jsonl
@@ -84,19 +86,25 @@ def kernel_name(name):
     return "".join(out).split(" ")[-1]
 
 
-def measure(call, iterations=100, cold_iterations=30):
+def measure(call, iterations=100, cold_iterations=30, cupti=True):
     import torch
     from torch.profiler import ProfilerActivity, profile
 
     for _ in range(10):
         call()
     torch.cuda.synchronize()
-    with profile(activities=[ProfilerActivity.CUDA]) as prof:
-        for _ in range(20):
+    if cupti:
+        with profile(activities=[ProfilerActivity.CUDA]) as prof:
+            for _ in range(20):
+                call()
+            torch.cuda.synchronize()
+        kernels = [e for e in prof.events() if e.device_type.name == "CUDA"]
+        gpu_us = sum(e.device_time_total for e in kernels) / 20
+    else:
+        for _ in range(20):  # the same calls, unprofiled
             call()
         torch.cuda.synchronize()
-    kernels = [e for e in prof.events() if e.device_type.name == "CUDA"]
-    gpu_us = sum(e.device_time_total for e in kernels) / 20
+        kernels, gpu_us = [], None
     by_name = defaultdict(lambda: [0, 0.0])
     for e in kernels:
         entry = by_name[kernel_name(e.name)]
@@ -118,9 +126,10 @@ def measure(call, iterations=100, cold_iterations=30):
         stop.record()
         stop.synchronize()
         cold.append(start.elapsed_time(stop) * 1000)
-    return {"gpu_us": gpu_us, "kernels_per_call": len(kernels) / 20, "call_us": call_us,
+    return {"gpu_us": gpu_us, "kernels_per_call": len(kernels) / 20 if cupti else None, "call_us": call_us,
             "cold_us": float(np.median(cold)),
-            "kernels": {n: {"launches": c / 20, "us": t / 20} for n, (c, t) in sorted(by_name.items())}}
+            "kernels": {n: {"launches": c / 20, "us": t / 20} for n, (c, t) in sorted(by_name.items())}
+            if cupti else None}
 
 
 def main():
@@ -133,6 +142,7 @@ def main():
     parser.add_argument("--capture", type=Path, default=ROOT / "results/raw/logits/qwen3-8b.npz")
     parser.add_argument("--params", nargs="*", default=list(PARAMS))
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--no-cupti", action="store_true", help="skip the CUPTI kernel timing (gpu_us is null)")
     args = parser.parse_args()
     sys.path[:0] = [str(args.exactsample_root / "python"), str(ROOT / "bench")]
     import torch
@@ -158,7 +168,7 @@ def main():
                         return verify(logits, offsets, ids, params=params, rng=rng, plan=workspace, out=output,
                                       **hints)
 
-                    record.update(measure(call))
+                    record.update(measure(call, cupti=not args.no_cupti))
                     record["accepted_mean"] = output.accepted_len[:requests].float().mean().item()
                     record["paths"] = sorted(set(output.path_used[:requests].tolist()))
                     if hasattr(workspace, "fallbacks"):
@@ -170,7 +180,7 @@ def main():
                     if prepared is None:
                         continue
                     call, metadata = prepared
-                    record.update(measure(call))
+                    record.update(measure(call, cupti=not args.no_cupti))
                     result = call()
                     record["accepted_mean"] = result.accepted_len.float().mean().item()
                     record["version"] = metadata["version"]
