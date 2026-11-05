@@ -1,7 +1,7 @@
 """Tables from bench/run_sampler.sh output: median GPU time per call over runs.
 
     python bench/summarize.py results/sampler/runs [--json results/sampler/summary.json]
-    python bench/summarize.py results/a10/sampler/runs --metric call_us   (runs without CUPTI)
+    python bench/summarize.py results/a10/sampler/runs --metric cold_us   (runs without CUPTI)
 
 For each cell and implementation, reports the median and interquartile range
 over runs of gpu_us (summed kernel time per call), call_us (event time per
@@ -21,6 +21,7 @@ ORDER = ["exactsample", "vllm_mrv2", "flashinfer"]
 NAMES = {"exactsample": "exactsample", "vllm_mrv2": "vLLM 0.31", "flashinfer": "FlashInfer 0.7"}
 TITLES = {"qwen": "T=0.6, top-k 20, top-p 0.95", "temperature": "T=1.0", "top_p": "T=0.7, top-p 0.9"}
 METRICS = ("gpu_us", "call_us", "cold_us")
+WHAT = {"gpu_us": "GPU time", "call_us": "event time (launch overhead included)", "cold_us": "cold-call time"}
 
 
 def stats(values):
@@ -51,7 +52,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--json", type=Path)
-    parser.add_argument("--metric", choices=METRICS[:2], default="gpu_us", help="the time the tables report")
+    parser.add_argument("--metric", choices=METRICS, default="gpu_us", help="the time the tables report")
     args = parser.parse_args()
     cells = summarize(args.directory, args.metric)
     if args.json:
@@ -66,8 +67,9 @@ def main():
         keys = sorted(k for k in cells if k[0] == params)
         if not keys:
             continue
-        what = "GPU time" if args.metric == "gpu_us" else "event time (launch overhead included)"
-        print(f"\n### {TITLES[params]}: median {what} per call, us (IQR); cold L2 in brackets\n")
+        other = "call_us" if args.metric == "cold_us" else "cold_us"
+        print(f"\n### {TITLES[params]}: median {WHAT[args.metric]} per call, us (IQR); "
+              f"{'back-to-back calls' if other == 'call_us' else 'cold L2'} in brackets\n")
         print("| requests x rows each | " + " | ".join(NAMES[i] for i in impls) + " |")
         print("|---|" + "---:|" * len(impls))
         for key in keys:
@@ -77,7 +79,7 @@ def main():
                 if e is None:
                     values.append("–")
                     continue
-                g, c = e[args.metric], e["cold_us"]
+                g, c = e[args.metric], e[other]
                 values.append(f"{g['median']:.0f} ({g['q1']:.0f}–{g['q3']:.0f}) [{c['median']:.0f}]")
             print(f"| {key[2]} x {key[1] + 1} | " + " | ".join(values) + " |")
 
