@@ -300,7 +300,7 @@ their tokens across preemption
 
 ```bash
 pip install -e '.[test]'                                     # NumPy reference and tests
-EXACTSAMPLE_PYTHON=python3 bash scripts/build_cuda.sh                # builds exactsample_cuda.so (PyTorch 2.13, CUDA 13, sm_89)
+EXACTSAMPLE_PYTHON=python3 bash scripts/build_cuda.sh                # builds exactsample_cuda.so (PyTorch 2.13, CUDA 13, sm_86 and sm_89)
 python -m pytest -q                                          # CPU tests; CUDA tests run when a GPU is present
 # bench/requirements.txt pins the GPU environment the results were measured in
 ```

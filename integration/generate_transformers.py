@@ -64,8 +64,8 @@ def run(args, record):
     device = torch.device(args.device)
     if device.type != "cuda" or not torch.cuda.is_available():
         raise RuntimeError("a CUDA GPU is required; this script has no CPU substitute")
-    if torch.cuda.get_device_capability(device) != (8, 9):
-        raise RuntimeError("the first exactsample hardware contract is sm_89")
+    if torch.cuda.get_device_capability(device) not in ((8, 6), (8, 9)):
+        raise RuntimeError("exactsample is built and tested for sm_86 and sm_89 only")
     record["environment"] = {
         "torch": torch.__version__, "transformers": transformers.__version__,
         "numpy": np.__version__, "cuda": torch.version.cuda,

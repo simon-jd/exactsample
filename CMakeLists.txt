@@ -3,8 +3,9 @@ project(exactsample LANGUAGES CXX CUDA)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# sm_86 and sm_89: the architectures the tests have run on (an A10 vGPU and an RTX 4090).
 if(NOT CMAKE_CUDA_ARCHITECTURES)
-  set(CMAKE_CUDA_ARCHITECTURES 89)
+  set(CMAKE_CUDA_ARCHITECTURES 86 89)
 endif()
 option(EXACTSAMPLE_STANDALONE "Compile the CUDA core without PyTorch (no Python operator)" OFF)
 find_package(CUDAToolkit REQUIRED)
@@ -16,7 +17,7 @@ target_compile_options(exactsample_core PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--fma
 if(NOT EXACTSAMPLE_STANDALONE)
   # PyTorch's CMake scripts use their own architecture selector and otherwise
   # autodetect obsolete architectures when the driver is unavailable at build.
-  set(TORCH_CUDA_ARCH_LIST "8.9" CACHE STRING "PyTorch CUDA architectures")
+  set(TORCH_CUDA_ARCH_LIST "8.6;8.9" CACHE STRING "PyTorch CUDA architectures")
   find_package(Torch REQUIRED)
   if(NOT TARGET torch_cuda)
     message(FATAL_ERROR "CUDA-enabled PyTorch is required for exactsample_cuda. Use EXACTSAMPLE_STANDALONE=ON for offline core compilation.")
