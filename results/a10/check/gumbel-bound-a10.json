@@ -1,0 +1,1 @@
+{"words": 4294967296, "error_bound": "2^-19 * (1 + |G|)", "worst_error_over_bound": 0.130405, "worst_word": 1507812800, "error_violations": 0, "screen_min_margin": 1.86169781e-06, "screen_violations": 0, "max_noise": 22.873856958, "min_noise": -3.129994641, "gumbel_max": 22.875000, "passed": true}

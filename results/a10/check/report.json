@@ -1,0 +1,199 @@
+{
+  "run_id": "20261105T015602Z-es-check2",
+  "pool": "PORTFOLIO_A10_POOL",
+  "instances": 1,
+  "payload": "payloads/exactsample_a10_check.py",
+  "pip": [],
+  "args": [],
+  "started_at": "2026-11-05T01:56:02+00:00",
+  "pool_before": {
+    "state": "SUSPENDED",
+    "instance_family": "GPU_NV_SM",
+    "min_nodes": "1",
+    "max_nodes": "2",
+    "active_nodes": "0",
+    "idle_nodes": "0",
+    "num_services": "0",
+    "num_jobs": "0"
+  },
+  "job_id": "PORTFOLIO_LAB.GPU.PF_EXACTSAMPLE_A10_CHECK_ES_CHECK2_1TJQQ7QVRVGWQ",
+  "status_trace": [
+    {
+      "at_s": 5,
+      "job": "PENDING",
+      "containers": [
+        [
+          "PENDING",
+          "Compute pool node(s) are being provisioned"
+        ]
+      ]
+    },
+    {
+      "at_s": 86,
+      "job": "PENDING",
+      "containers": [
+        [
+          "PENDING",
+          "Unschedulable due to insufficient  resources."
+        ]
+      ]
+    },
+    {
+      "at_s": 107,
+      "job": "PENDING",
+      "containers": [
+        [
+          "PENDING",
+          "Waiting to start"
+        ]
+      ]
+    },
+    {
+      "at_s": 127,
+      "job": "RUNNING",
+      "containers": [
+        [
+          "READY",
+          "Running"
+        ]
+      ]
+    },
+    {
+      "at_s": 514,
+      "job": "PENDING",
+      "containers": [
+        [
+          "DONE",
+          "Completed successfully"
+        ]
+      ]
+    },
+    {
+      "at_s": 554,
+      "job": "DONE",
+      "containers": [
+        [
+          "DONE",
+          "Completed successfully"
+        ]
+      ]
+    }
+  ],
+  "status": "DONE",
+  "results": [
+    {
+      "python": "3.12.15",
+      "fetch_s": 25.3,
+      "sha256": {
+        "wheelhouse-vllm-0.31.0.tar": "2b91e6ac0ad5cc7486d28879f9a939a707f6a1e9276df44adc663b60b675c895",
+        "cuda-compat-13-2.tar": "285936f8078813ffee8eb661886ce814a789fcb3d369470d2b9b1cfb45678f84",
+        "exactsample-d5322a9.tar": "17b95fd3047afac28e2fb8274618e92d5d91e9df3ba887cdc7dfdab2c670e1ce",
+        "exactsample-testdeps-py312.tar": "a63156812bf25e6bd4d8a44c22dc8c0942aca052f8d9aa4186ce8475d37fad9c",
+        "exactsample-qwen3-8b-logits.tar": "6b8d85828ea5b2b8286c63414c4909b7d9629de3a8ac763c86a71750dfa7ba7b"
+      },
+      "sha256_mismatch": [],
+      "install": {
+        "rc": 0,
+        "wheels": 199,
+        "seconds": 219.8,
+        "err_tail": []
+      },
+      "commit": "d5322a93d6ac4190ef735caa6fc10705e8aabfe9",
+      "library_sha256": "f77e1ebfa3d9be38c49b25a3c96ece91f67fed2def4a56b1223b0a0f27ff96f2",
+      "torch_node_driver": {
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "available": false,
+        "libcuda": [
+          "/usr/lib/x86_64-linux-gnu/libcuda.so.570.211.01"
+        ],
+        "error": "The NVIDIA driver on your system is too old (found version 12080). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your"
+      },
+      "torch_compat": {
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "available": true,
+        "libcuda": [
+          "/tmp/pf-exactsample-check/compat/libcuda.so.595.112.07"
+        ],
+        "device": "NVIDIA A10-24Q",
+        "cc": [
+          8,
+          6
+        ],
+        "sms": 72,
+        "memory_gib": 23.7,
+        "driver_cuda": null
+      },
+      "compat_driver_used": true,
+      "nvidia_smi_before": "NVIDIA A10-24Q, 570.211.01, 1695 MHz, 6251 MHz, [Unknown Error], [Unknown Error], [N/A], [N/A], [N/A], 24512 MiB, 0 MiB",
+      "pytest": {
+        "rc": 0,
+        "seconds": 18.8,
+        "summary": [
+          "96 passed, 8 skipped, 122 subtests passed in 17.90s"
+        ]
+      },
+      "pytest_cuda_files": {
+        "rc": 0,
+        "summary": [
+          "23 passed, 100 subtests passed in 13.87s"
+        ]
+      },
+      "agreement_8x8": {
+        "rc": 0,
+        "seconds": 40.3,
+        "identical_requests": 192,
+        "requests": 192,
+        "fp64_fallbacks": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "json_same_as_rtx4090": true
+      },
+      "agreement_full": {
+        "rc": 0,
+        "seconds": 39.9,
+        "identical_requests": 192,
+        "requests": 192,
+        "fp64_fallbacks": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "json_same_as_rtx4090": true
+      },
+      "gumbel_bound": {
+        "rc": 0,
+        "seconds": 1.9,
+        "err_tail": [],
+        "same_as_rtx4090": true
+      },
+      "nvidia_smi_after": "NVIDIA A10-24Q, 570.211.01, 1695 MHz, 6251 MHz, [Unknown Error], [Unknown Error], [N/A], [N/A], [N/A], 24512 MiB, 0 MiB",
+      "payload_seconds": 370.6
+    }
+  ],
+  "seconds": 554.8,
+  "stop": [
+    "ALTER COMPUTE POOL PORTFOLIO_A10_POOL STOP ALL: ok",
+    "ALTER COMPUTE POOL PORTFOLIO_A10_POOL SUSPEND: ok"
+  ],
+  "pool_after": {
+    "state": "STOPPING",
+    "instance_family": "GPU_NV_SM",
+    "min_nodes": "1",
+    "max_nodes": "2",
+    "active_nodes": "0",
+    "idle_nodes": "1",
+    "num_services": "0",
+    "num_jobs": "0"
+  },
+  "credits_estimate": 0.262
+}

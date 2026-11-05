@@ -1,0 +1,150 @@
+{
+  "run_id": "20261105T020618Z-es-sampler",
+  "pool": "PORTFOLIO_A10_POOL",
+  "instances": 1,
+  "payload": "payloads/exactsample_a10_sampler.py",
+  "pip": [],
+  "args": [],
+  "started_at": "2026-11-05T02:06:18+00:00",
+  "pool_before": {
+    "state": "SUSPENDED",
+    "instance_family": "GPU_NV_SM",
+    "min_nodes": "1",
+    "max_nodes": "2",
+    "active_nodes": "0",
+    "idle_nodes": "0",
+    "num_services": "0",
+    "num_jobs": "0"
+  },
+  "job_id": "PORTFOLIO_LAB.GPU.PF_EXACTSAMPLE_A10_SAMPLER_ES_SAMPLER_1LNW6PSEYY0BS",
+  "status_trace": [
+    {
+      "at_s": 6,
+      "job": "PENDING",
+      "containers": [
+        [
+          "PENDING",
+          "Compute pool node(s) are being provisioned"
+        ]
+      ]
+    },
+    {
+      "at_s": 107,
+      "job": "PENDING",
+      "containers": [
+        [
+          "PENDING",
+          "Unschedulable due to insufficient  resources."
+        ]
+      ]
+    },
+    {
+      "at_s": 128,
+      "job": "PENDING",
+      "containers": [
+        [
+          "PENDING",
+          "Waiting to start"
+        ]
+      ]
+    },
+    {
+      "at_s": 148,
+      "job": "RUNNING",
+      "containers": [
+        [
+          "READY",
+          "Running"
+        ]
+      ]
+    },
+    {
+      "at_s": 781,
+      "job": "PENDING",
+      "containers": [
+        [
+          "DONE",
+          "Completed successfully"
+        ]
+      ]
+    },
+    {
+      "at_s": 822,
+      "job": "DONE",
+      "containers": [
+        [
+          "DONE",
+          "Completed successfully"
+        ]
+      ]
+    }
+  ],
+  "status": "DONE",
+  "results": [
+    {
+      "python": "3.12.15",
+      "fetch_s": 24.3,
+      "sha256_mismatch": [],
+      "install": {
+        "rc": 0,
+        "wheels": 199,
+        "seconds": 186.9,
+        "err_tail": []
+      },
+      "torch_compat": {
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "available": true,
+        "libcuda": [
+          "/tmp/pf-exactsample-sampler/compat/libcuda.so.595.112.07"
+        ],
+        "device": "NVIDIA A10-24Q",
+        "cc": [
+          8,
+          6
+        ]
+      },
+      "torch_node_driver": {
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "available": false,
+        "libcuda": [
+          "/usr/lib/x86_64-linux-gnu/libcuda.so.570.211.01"
+        ]
+      },
+      "compat_driver_used": true,
+      "rounds": 10,
+      "round_seconds": [
+        118,
+        27,
+        27,
+        27,
+        27,
+        27,
+        27,
+        27,
+        27,
+        27,
+        27
+      ],
+      "failures": [],
+      "payload_seconds": 611.7
+    }
+  ],
+  "seconds": 822.5,
+  "stop": [
+    "ALTER COMPUTE POOL PORTFOLIO_A10_POOL STOP ALL: ok",
+    "ALTER COMPUTE POOL PORTFOLIO_A10_POOL SUSPEND: ok"
+  ],
+  "pool_after": {
+    "state": "SUSPENDED",
+    "instance_family": "GPU_NV_SM",
+    "min_nodes": "1",
+    "max_nodes": "2",
+    "active_nodes": "0",
+    "idle_nodes": "0",
+    "num_services": "0",
+    "num_jobs": "0"
+  },
+  "credits_estimate": 0.388
+}

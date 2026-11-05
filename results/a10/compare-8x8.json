@@ -1,0 +1,75 @@
+{
+  "a": "outputs-8x8-rtx4090.npz",
+  "b": "outputs-8x8-a10.npz",
+  "workloads": [
+    {
+      "workload": "qwen-64x0",
+      "requests": 64,
+      "identical_requests": 64,
+      "byte_identical": {
+        "tokens": true,
+        "accepted_len": true,
+        "status": true,
+        "path_used": true
+      }
+    },
+    {
+      "workload": "qwen-16x4",
+      "requests": 16,
+      "identical_requests": 16,
+      "byte_identical": {
+        "tokens": true,
+        "accepted_len": true,
+        "status": true,
+        "path_used": true
+      }
+    },
+    {
+      "workload": "top_p-64x0",
+      "requests": 64,
+      "identical_requests": 64,
+      "byte_identical": {
+        "tokens": true,
+        "accepted_len": true,
+        "status": true,
+        "path_used": true
+      }
+    },
+    {
+      "workload": "top_p-16x4",
+      "requests": 16,
+      "identical_requests": 16,
+      "byte_identical": {
+        "tokens": true,
+        "accepted_len": true,
+        "status": true,
+        "path_used": true
+      }
+    },
+    {
+      "workload": "temperature-24x0",
+      "requests": 24,
+      "identical_requests": 24,
+      "byte_identical": {
+        "tokens": true,
+        "accepted_len": true,
+        "status": true,
+        "path_used": true
+      }
+    },
+    {
+      "workload": "temperature-8x4",
+      "requests": 8,
+      "identical_requests": 8,
+      "byte_identical": {
+        "tokens": true,
+        "accepted_len": true,
+        "status": true,
+        "path_used": true
+      }
+    }
+  ],
+  "requests": 192,
+  "identical_requests": 192,
+  "all_byte_identical": true
+}

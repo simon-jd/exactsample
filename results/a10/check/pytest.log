@@ -1,0 +1,12 @@
+......................................................................................ss...... [ 90%]
+ssssss....                                                               [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_vllm_async.py:101: set EXACTSAMPLE_VLLM_SOURCE and install optional torch for the native async checks
+SKIPPED [1] tests/test_vllm_async.py:74: set EXACTSAMPLE_VLLM_SOURCE and install optional torch for the native async checks
+SKIPPED [1] tests/test_vllm_bridge.py:194: set EXACTSAMPLE_VLLM_SOURCE for the pinned-source checks
+SKIPPED [1] tests/test_vllm_bridge.py:224: set EXACTSAMPLE_VLLM_SOURCE for the pinned-source checks
+SKIPPED [1] tests/test_vllm_bridge.py:211: set EXACTSAMPLE_VLLM_SOURCE for the pinned-source checks
+SKIPPED [1] tests/test_vllm_bridge.py:263: set EXACTSAMPLE_VLLM_SOURCE for the pinned-source checks
+SKIPPED [1] tests/test_vllm_bridge.py:283: set EXACTSAMPLE_VLLM_SOURCE for the pinned-source checks
+SKIPPED [1] tests/test_vllm_bridge.py:349: set EXACTSAMPLE_VLLM_SOURCE for the pinned-source checks
+96 passed, 8 skipped, 122 subtests passed in 17.90s

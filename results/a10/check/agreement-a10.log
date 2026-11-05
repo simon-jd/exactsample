@@ -1,0 +1,6 @@
+{"params": "qwen", "requests": 64, "drafts": 0, "rows": 64, "identical_requests": 64, "fp64_fallbacks": 0, "accepted_mean": 0.0}
+{"params": "qwen", "requests": 16, "drafts": 4, "rows": 80, "identical_requests": 16, "fp64_fallbacks": 0, "accepted_mean": 3.5625}
+{"params": "top_p", "requests": 64, "drafts": 0, "rows": 64, "identical_requests": 64, "fp64_fallbacks": 0, "accepted_mean": 0.0}
+{"params": "top_p", "requests": 16, "drafts": 4, "rows": 80, "identical_requests": 16, "fp64_fallbacks": 0, "accepted_mean": 3.5625}
+{"params": "temperature", "requests": 24, "drafts": 0, "rows": 24, "identical_requests": 24, "fp64_fallbacks": 0, "accepted_mean": 0.0}
+{"params": "temperature", "requests": 8, "drafts": 4, "rows": 40, "identical_requests": 8, "fp64_fallbacks": 0, "accepted_mean": 3.5}
